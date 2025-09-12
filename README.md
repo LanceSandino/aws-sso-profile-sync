@@ -1,0 +1,1 @@
+# aws-sso-profile-sync
