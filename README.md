@@ -15,50 +15,41 @@ A Go CLI tool that automatically configures AWS CLI profiles for all AWS account
 
 ## 📋 Prerequisites
 
-- **Go 1.25+** installed on your system
-- **AWS CLI v2** installed and available in your PATH
-- **AWS SSO** configured in your organization
-- Access to AWS accounts through AWS SSO
+- Go 1.19+ installed on your system
+- AWS SSO configured for your organization and an account with access
+
+This tool uses the AWS SDK for Go v2 and does not require the AWS CLI to be installed. It writes profiles directly to your AWS config file (`~/.aws/config`).
 
 ## 🛠️ Installation
 
-### Option 1: Build from Source
+Build from source:
 
 ```bash
 git clone https://github.com/LanceSandino/aws-sso-profile-sync.git
 cd aws-sso-profile-sync
-go build -o aws-sso-profile-sync .
+go build -o aws-sso-profile-sync main.go
 ```
 
-### Option 2: Direct Go Install
+Or install with `go install`:
 
 ```bash
 go install github.com/LanceSandino/aws-sso-profile-sync@latest
 ```
 
-## ⚙️ Configuration
+## ⚙️ Configuration (flags)
 
-Before using the tool, you need to configure the following constants in `main.go`:
+This tool is configured via CLI flags rather than compile-time constants. Important flags implemented in the code include:
 
-```go
-const (
-    SSOStartURL          = "https://XXXXXXX.awsapps.com/start/"  // Your AWS SSO start URL
-    SSOSessionConfigName = "my-sso-name"                        // Your SSO session name
-    SSORegion            = "us-east-1"                          // Your AWS SSO region
-    SSORoleName          = "AWSPowerUserAccess"                 // Target IAM role
-    ProfilePrefix        = "PowerUser_"                         // Prefix for profile names
-)
-```
+- `-sso-start-url` (required): the SSO start URL for your tenant (e.g. `https://mycompany.awsapps.com/start/`).
+- `-sso-session-name` (default: `default`): name for the `sso-session` block in your AWS config.
+- `-sso-region` (default: `us-east-1`): AWS SSO region.
+- `-role` (repeatable): SSO role names to create profiles for (can be provided multiple times).
+- `-prefix`: explicit profile prefix (overrides auto-generation).
+- `-auto-prefix` (default: true): auto-generate profile prefix from role name.
+- `-output` (default: `json`): value to write into the `output` key for each profile (e.g., `json` or `text`).
+- `-config-file`: path to the AWS config file (defaults to SDK default, typically `~/.aws/config`).
 
-### Configuration Parameters
-
-| Parameter | Description | Example |
-|-----------|-------------|---------|
-| `SSOStartURL` | Your organization's AWS SSO start URL | `https://mycompany.awsapps.com/start/` |
-| `SSOSessionConfigName` | Name for the SSO session in AWS config | `my-company-sso` |
-| `SSORegion` | AWS region where your SSO is configured | `us-east-1`, `us-west-2`, etc. |
-| `SSORoleName` | IAM role to use for profiles | `AWSPowerUserAccess`, `AWSAdministratorAccess`, `AWSReadOnlyAccess` |
-| `ProfilePrefix` | Prefix added to generated profile names | `PowerUser_`, `Admin_`, etc. |
+Use `-dry-run` to preview changes without writing files, and `-open` (default true) to automatically open the device verification URL in your browser during login.
 
 ## 🚀 Usage
 
@@ -83,9 +74,9 @@ const (
 
 ```
 ========== AWS SSO Profile Setup ==========
-🔧 Added SSO session config: my-sso-name
+✅ Added SSO session config block for [my-sso-name] to /home/user/.aws/config
 
-🔑 Found existing SSO token at: /home/user/.aws/sso/cache/abc123.json
+🔑 Found existing SSO token at: /home/user/.aws/sso/cache/abc123.json (🌐 ssoUrl: https://your-tenant.awsapps.com/start/, 📍 ssoRegion: us-east-1)
 ✅ Existing token is valid, continuing...
 
 🔎 Found 5 account(s) with role AWSPowerUserAccess
@@ -184,6 +175,8 @@ The tool consists of several key components:
 - **Account Discovery**: Uses AWS SSO APIs to fetch accessible accounts and roles
 - **Profile Generation**: Creates AWS CLI profiles using the `aws configure` command
 - **Configuration Management**: Manages SSO session configuration in AWS config files
+ - **Profile Generation**: Writes AWS CLI profile sections directly to the AWS config file using the `gopkg.in/ini.v1` library
+ - **Configuration Management**: Manages SSO session configuration in AWS config files (direct INI edits)
 
 ## 🤝 Contributing
 
@@ -215,6 +208,7 @@ This project is open source. Please check the repository for license details.
 
 - Built with the [AWS SDK for Go v2](https://github.com/aws/aws-sdk-go-v2)
 - Uses [fatih/color](https://github.com/fatih/color) for beautiful terminal output
+ - Uses [gopkg.in/ini.v1](https://gopkg.in/ini.v1) to read and write `~/.aws/config` safely
 
 ---
 
