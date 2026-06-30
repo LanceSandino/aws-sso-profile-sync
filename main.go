@@ -26,6 +26,9 @@ const (
 	// Default values for SSO configuration
 	defaultSSOSessionConfigName = "default"
 	defaultSSORegion            = "us-east-1"
+	// defaultProfileRegion is the region written into generated profiles when
+	// it cannot be detected from a flag, environment, or existing config.
+	defaultProfileRegion = "us-east-2"
 )
 
 // Configuration variables populated by flags
@@ -36,6 +39,7 @@ var (
 	ssoStartURL          string
 	ssoSessionConfigName string
 	ssoRegion            string
+	profileRegion        string
 	ssoConfigFile        string
 	dryRun               bool
 	openBrowser          bool
@@ -661,7 +665,7 @@ func writeProfileToConfig(profileName string, role CombinedRole) error {
 		block += fmt.Sprintf("sso_session = %s\n", ssoSessionConfigName)
 		block += fmt.Sprintf("sso_account_id = %s\n", role.AccountId)
 		block += fmt.Sprintf("sso_role_name = %s\n", role.RoleName)
-		block += fmt.Sprintf("region = %s\n", ssoRegion)
+		block += fmt.Sprintf("region = %s\n", profileRegion)
 		block += fmt.Sprintf("output = %s\n\n", profileOutput)
 		printBlockIndented("      ", block)
 		return nil
@@ -688,7 +692,7 @@ func writeProfileToConfig(profileName string, role CombinedRole) error {
 	section.Key("sso_session").SetValue(ssoSessionConfigName)
 	section.Key("sso_account_id").SetValue(role.AccountId)
 	section.Key("sso_role_name").SetValue(role.RoleName)
-	section.Key("region").SetValue(ssoRegion)
+	section.Key("region").SetValue(profileRegion)
 	section.Key("output").SetValue(profileOutput)
 
 	// Ensure parent directory exists before saving (tests may use temp dirs).
@@ -901,6 +905,70 @@ func login() error {
 	return configureSsoProfilesFunc(accessToken)
 }
 
+// resolveProfileRegion determines the region to write into generated profiles.
+// Precedence: explicit -region flag, then AWS_REGION / AWS_DEFAULT_REGION env
+// vars, then the region of an existing [default] profile in the AWS config,
+// then the hardcoded defaultProfileRegion. The returned string is the resolved
+// region; source describes where it came from (for user-facing messaging).
+func resolveProfileRegion(explicit, configPath string) (region, source string) {
+	if explicit != "" {
+		return explicit, "flag"
+	}
+	if env := os.Getenv("AWS_REGION"); env != "" {
+		return env, "AWS_REGION env"
+	}
+	if env := os.Getenv("AWS_DEFAULT_REGION"); env != "" {
+		return env, "AWS_DEFAULT_REGION env"
+	}
+	if cfg, err := ini.Load(configPath); err == nil {
+		if r := cfg.Section("default").Key("region").String(); r != "" {
+			return r, "existing [default] profile"
+		}
+	}
+	return defaultProfileRegion, "default"
+}
+
+// getDistinctRolesAcrossAccounts returns the sorted set of unique role names
+// available across all accounts accessible via SSO.
+func getDistinctRolesAcrossAccounts(accessToken string) ([]string, error) {
+	accounts, err := getListOfSsoAccounts(accessToken)
+	if err != nil {
+		return nil, err
+	}
+	seen := make(map[string]bool)
+	for _, account := range accounts {
+		roles, err := getListOfSsoAccountRolesForAccount(accessToken, account.AccountId)
+		if err != nil {
+			return nil, err
+		}
+		for _, r := range roles {
+			seen[r.RoleName] = true
+		}
+	}
+	var distinct []string
+	for name := range seen {
+		distinct = append(distinct, name)
+	}
+	sort.Strings(distinct)
+	return distinct, nil
+}
+
+func singleRoleFromDistinctRoles(distinctRoles []string) (string, bool) {
+	if len(distinctRoles) != 1 {
+		return "", false
+	}
+	return distinctRoles[0], true
+}
+
+func autoSelectSingleRole(accessToken string) (string, bool, error) {
+	distinctRoles, err := getDistinctRolesAcrossAccounts(accessToken)
+	if err != nil {
+		return "", false, err
+	}
+	roleName, selected := singleRoleFromDistinctRoles(distinctRoles)
+	return roleName, selected, nil
+}
+
 func main() {
 	// Parse command line flags
 	var roleNames stringSliceFlag
@@ -915,6 +983,8 @@ func main() {
 	flag.StringVar(&ssoStartURL, "sso-start-url", "", "AWS SSO start URL (required)")
 	flag.StringVar(&ssoSessionConfigName, "sso-session-name", defaultSSOSessionConfigName, "SSO session configuration name")
 	flag.StringVar(&ssoRegion, "sso-region", defaultSSORegion, "AWS SSO region")
+	var regionFlag string
+	flag.StringVar(&regionFlag, "region", "", fmt.Sprintf("Region written into generated profiles (default: AWS_REGION/AWS_DEFAULT_REGION env, existing [default] profile, then %s)", defaultProfileRegion))
 	flag.StringVar(&ssoConfigFile, "config-file", config.DefaultSharedConfigFilename(), "AWS config file path")
 
 	flag.Parse()
@@ -925,6 +995,11 @@ func main() {
 		flag.Usage()
 		os.Exit(1)
 	}
+
+	// Resolve the profile region (separate from the SSO region) using the
+	// flag/env/config fallback chain.
+	var regionSource string
+	profileRegion, regionSource = resolveProfileRegion(regionFlag, ssoConfigFile)
 
 	// Session detection and reuse will be printed at runtime after auth so the
 	// user sees the reused session block in context; moved into login().
@@ -940,9 +1015,11 @@ func main() {
 		// Print a single concise dry-run header to avoid repetition
 		fmt.Printf("%s %s — %s\n\n", yellow("🔍"), bold("DRY-RUN MODE: No changes will be made"), "This will show what would be configured without making actual changes")
 	}
+	fmt.Printf("%s Profile region: %s (%s)\n", cyan("📍"), bold(profileRegion), regionSource)
+
 	// If no roles were requested, perform the login/discovery flow and
-	// list available roles per account, then exit. This mirrors the dry-run
-	// listing behavior so users see identical output in apply vs dry-run.
+	// auto-select the role only when exactly one distinct role exists. If
+	// multiple roles are available, list them and ask the user to choose.
 	if len(ssoRoleNames) == 0 {
 		// We still need a valid token to discover accounts/roles. Reuse the
 		// login() flow which will either use an existing token or prompt the
@@ -956,6 +1033,25 @@ func main() {
 		if err != nil {
 			fmt.Printf("%s %v\n", red("❌"), err)
 			os.Exit(1)
+		}
+		roleName, selected, err := autoSelectSingleRole(accessToken)
+		if err != nil {
+			fmt.Printf("%s %s %v\n", red("❌"), bold("Error detecting roles:"), err)
+			os.Exit(1)
+		}
+		if selected {
+			ssoRoleNames = []string{roleName}
+			fmt.Printf("%s Auto-selected SSO role %s because it is the only role available across your accounts.\n", green("✅"), bold(roleName))
+			if err := configureSsoProfilesFunc(accessToken); err != nil {
+				fmt.Printf("%s %v\n", red("❌"), err)
+				os.Exit(1)
+			}
+			if dryRun {
+				fmt.Println(green("\n🎉 Dry-run complete! Use without -dry-run to apply these changes."))
+			} else {
+				fmt.Println(green("\n🎉 AWS SSO login and profile configuration complete!"))
+			}
+			os.Exit(0)
 		}
 		// Reuse the same listing logic as dry-run
 		fmt.Printf("%s Available roles per account:\n", cyan("🔎"))

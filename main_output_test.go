@@ -24,6 +24,10 @@ func TestWriteProfileUsesConfiguredOutput(t *testing.T) {
 	defer func() { ssoSessionConfigName = oldSession }()
 	ssoSessionConfigName = "default"
 
+	oldProfileRegion := profileRegion
+	defer func() { profileRegion = oldProfileRegion }()
+	profileRegion = "us-east-2"
+
 	// Set a custom profileOutput and call writeProfileToConfig
 	oldOutput := profileOutput
 	defer func() { profileOutput = oldOutput }()
