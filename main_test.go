@@ -113,14 +113,17 @@ func TestWriteProfileToConfig(t *testing.T) {
 	oldConfigFile := ssoConfigFile
 	oldSession := ssoSessionConfigName
 	oldRegion := ssoRegion
+	oldProfileRegion := profileRegion
 	defer func() {
 		ssoConfigFile = oldConfigFile
 		ssoSessionConfigName = oldSession
 		ssoRegion = oldRegion
+		profileRegion = oldProfileRegion
 	}()
 	ssoConfigFile = cfgPath
 	ssoSessionConfigName = "testsession"
 	ssoRegion = "us-west-2"
+	profileRegion = "us-east-2"
 
 	role := CombinedRole{AccountId: "999888777666", AccountName: "Test Account", RoleName: "AWSReadOnlyAccess"}
 	profile := getProfileNameFromRole(role)
@@ -162,8 +165,66 @@ func TestWriteProfileToConfig(t *testing.T) {
 	if sec.Key("sso_role_name").String() != role.RoleName {
 		t.Fatalf("sso_role_name mismatch: got %q want %q", sec.Key("sso_role_name").String(), role.RoleName)
 	}
-	if sec.Key("region").String() != ssoRegion {
-		t.Fatalf("region mismatch: got %q want %q", sec.Key("region").String(), ssoRegion)
+	if sec.Key("region").String() != profileRegion {
+		t.Fatalf("region mismatch: got %q want %q", sec.Key("region").String(), profileRegion)
+	}
+}
+
+func TestResolveProfileRegion(t *testing.T) {
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "config")
+	cfg := ini.Empty()
+	sec, _ := cfg.NewSection("default")
+	sec.NewKey("region", "us-west-1")
+	if err := cfg.SaveTo(cfgPath); err != nil {
+		t.Fatalf("failed to write temp config: %v", err)
+	}
+
+	t.Setenv("AWS_REGION", "")
+	t.Setenv("AWS_DEFAULT_REGION", "")
+
+	got, source := resolveProfileRegion("eu-central-1", cfgPath)
+	if got != "eu-central-1" || source != "flag" {
+		t.Fatalf("flag region: got %q from %q", got, source)
+	}
+
+	t.Setenv("AWS_REGION", "ap-south-1")
+	got, source = resolveProfileRegion("", cfgPath)
+	if got != "ap-south-1" || source != "AWS_REGION env" {
+		t.Fatalf("AWS_REGION: got %q from %q", got, source)
+	}
+
+	t.Setenv("AWS_REGION", "")
+	t.Setenv("AWS_DEFAULT_REGION", "ap-southeast-2")
+	got, source = resolveProfileRegion("", cfgPath)
+	if got != "ap-southeast-2" || source != "AWS_DEFAULT_REGION env" {
+		t.Fatalf("AWS_DEFAULT_REGION: got %q from %q", got, source)
+	}
+
+	t.Setenv("AWS_DEFAULT_REGION", "")
+	got, source = resolveProfileRegion("", cfgPath)
+	if got != "us-west-1" || source != "existing [default] profile" {
+		t.Fatalf("default profile: got %q from %q", got, source)
+	}
+
+	got, source = resolveProfileRegion("", filepath.Join(dir, "missing"))
+	if got != defaultProfileRegion || source != "default" {
+		t.Fatalf("fallback region: got %q from %q", got, source)
+	}
+}
+
+func TestSingleRoleFromDistinctRoles(t *testing.T) {
+	role, ok := singleRoleFromDistinctRoles([]string{"AWSReadOnlyAccess"})
+	if !ok || role != "AWSReadOnlyAccess" {
+		t.Fatalf("expected single role to be selected, got %q ok=%v", role, ok)
+	}
+
+	if role, ok := singleRoleFromDistinctRoles([]string{"AWSReadOnlyAccess", "AWSPowerUserAccess"}); ok || role != "" {
+		t.Fatalf("expected multiple roles not to be selected, got %q ok=%v", role, ok)
+	}
+
+	if role, ok := singleRoleFromDistinctRoles(nil); ok || role != "" {
+		t.Fatalf("expected no roles not to be selected, got %q ok=%v", role, ok)
 	}
 }
 

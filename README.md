@@ -43,7 +43,8 @@ This tool is configured via CLI flags rather than compile-time constants. Import
 - `-sso-start-url` (required): the SSO start URL for your tenant (e.g. `https://mycompany.awsapps.com/start/`).
 - `-sso-session-name` (default: `default`): name for the `sso-session` block in your AWS config.
 - `-sso-region` (default: `us-east-1`): AWS SSO region.
-- `-role` (repeatable): SSO role names to create profiles for (can be provided multiple times).
+- `-role` (repeatable): SSO role names to create profiles for (can be provided multiple times). If omitted, the tool auto-selects the role only when exactly one distinct role is available across your accounts; otherwise it lists the available roles and asks you to re-run with `-role`.
+- `-region`: AWS region written into generated profiles. If omitted, the tool uses `AWS_REGION`, then `AWS_DEFAULT_REGION`, then the region in the existing `[default]` profile, then `us-east-2`.
 - `-prefix`: explicit profile prefix (overrides auto-generation).
 - `-auto-prefix` (default: true): auto-generate profile prefix from role name.
 - `-output` (default: `json`): value to write into the `output` key for each profile (e.g., `json` or `text`).
@@ -116,7 +117,7 @@ Each generated profile will have the following configuration in `~/.aws/config`:
 sso_session = my-sso-name
 sso_account_id = 123456789012
 sso_role_name = AWSPowerUserAccess
-region = us-east-1
+region = us-east-2
 output = json
 ```
 
