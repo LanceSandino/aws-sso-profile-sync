@@ -2,7 +2,7 @@
   "schema_version": 1,
   "version": "2.0.0",
   "status": "PENDING",
-  "source_fingerprint": "sha256:348d05c19c59d3cecdc85252abb7d401f1aa4ae4245ef0839d4ffb8c9fa2a645",
+  "source_fingerprint": "sha256:01d97818240b99fd37b57366e396a400555e101ceb2ebf2c2f8e22ccee607c02",
   "real_aws_acceptance": {
     "R01": "NOT_RUN",
     "R02": "NOT_RUN",
@@ -14,5 +14,5 @@
     "R08": "NOT_RUN",
     "R09": "NOT_RUN"
   },
-  "notes": "Stable 2.0.0 requires fresh R01-R09 acceptance for this source, including the role-name correction and final release configuration. Owner authorizes merge after green validation and resolved review comments, then verified stable publication and public Homebrew installation. Earlier candidate evidence remains historical."
+  "notes": "Final stable source includes verified tagged-checkout installation instructions and Homebrew as the primary option. Fresh acceptance is required for this exact revision; earlier stable-source receipts remain historical. Owner authorizes conditional merge, verified stable publication and public Homebrew installation."
 }
