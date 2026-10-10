@@ -52,6 +52,7 @@ func TestP04P05OwnershipAndEdits(t *testing.T) {
 	}
 	s.Sections["profile "+r.Profile.Name] = Keys(r.Profile)
 	o.Region = "eu-west-1"
+	o.OverrideProfileSettings = true
 	p, e = Build(s, a, o)
 	if e != nil || p.Results[0].Status != "updated" {
 		t.Fatal(e, p)

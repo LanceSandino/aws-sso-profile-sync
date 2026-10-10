@@ -13,16 +13,18 @@ import (
 )
 
 type Options struct {
-	Session                domain.Session
-	Region, Output, Prefix string
-	AutoPrefix             bool
-	Roles                  []string
+	Session                 domain.Session
+	Region, Output, Prefix  string
+	AutoPrefix              bool
+	Roles                   []string
+	OverrideProfileSettings bool
 }
 type Plan struct {
 	Results     []domain.Result              `json:"results"`
 	Sections    map[string]map[string]string `json:"sections"`
 	Owned       map[string]domain.Profile    `json:"-"`
 	Explanation string                       `json:"explanation,omitempty"`
+	Warnings    []domain.Warning             `json:"warnings"`
 }
 
 var unsafe = regexp.MustCompile(`[^A-Za-z0-9_.-]+`)
@@ -58,7 +60,7 @@ func Keys(p domain.Profile) map[string]string {
 	return map[string]string{"sso_session": p.Session.Name, "sso_account_id": p.Assignment.AccountID, "sso_role_name": p.Assignment.RoleName, "region": p.Region, "output": p.Output}
 }
 func Build(s configstore.Snapshot, assignments []domain.Assignment, o Options) (Plan, error) {
-	p := Plan{Results: []domain.Result{}, Sections: map[string]map[string]string{}, Owned: map[string]domain.Profile{}}
+	p := Plan{Results: []domain.Result{}, Sections: map[string]map[string]string{}, Owned: map[string]domain.Profile{}, Warnings: []domain.Warning{}}
 	o.Session = o.Session.Normalized()
 	if o.Session.Name == "" || o.Session.Region == "" || o.Region == "" || o.Output == "" {
 		return p, domain.Fail("config_invalid", "session, region and output must be explicit")
@@ -149,12 +151,31 @@ func Build(s configstore.Snapshot, assignments []domain.Assignment, o Options) (
 				r.Status = "unchanged"
 				r.Reason = "managed identity and configuration match"
 				for k, v := range Keys(owned) {
-					if existing[k] != v {
+					if k != "region" && k != "output" && existing[k] != v {
 						r.Status = "conflict"
 						r.Reason = "managed profile was edited externally"
 					}
 				}
 				if r.Status != "conflict" {
+					if !o.OverrideProfileSettings {
+						for _, field := range []string{"output", "region"} {
+							requested := profile.Region
+							if field == "output" {
+								requested = profile.Output
+							}
+							if actual := existing[field]; actual != "" {
+								if actual != requested {
+									p.Warnings = append(p.Warnings, domain.Warning{Code: "setting_preserved", Profiles: []string{profile.Name}, Field: field, Existing: actual, Requested: requested})
+								}
+								if field == "region" {
+									profile.Region = actual
+								} else {
+									profile.Output = actual
+								}
+							}
+						}
+					}
+					r.Profile = profile
 					for k, v := range Keys(profile) {
 						if existing[k] != v {
 							r.Status = "updated"
@@ -168,7 +189,7 @@ func Build(s configstore.Snapshot, assignments []domain.Assignment, o Options) (
 			r.Reason = "managed profile was removed externally"
 		}
 		p.Results = append(p.Results, r)
-		if r.Status == "created" || r.Status == "updated" {
+		if r.Status == "created" || r.Status == "updated" || (r.Status == "unchanged" && (owned.Region != profile.Region || owned.Output != profile.Output)) {
 			p.Sections["profile "+profile.Name] = Keys(profile)
 			p.Owned[profile.Name] = profile
 		}
@@ -178,6 +199,36 @@ func Build(s configstore.Snapshot, assignments []domain.Assignment, o Options) (
 			p.Results = append(p.Results, domain.Result{Profile: old, Status: "stale", Reason: "assignment no longer visible; profile retained"})
 		}
 	}
+	// Inspect the complete proposed configuration; unowned aliases remain intact.
+	projected := map[string]map[string]string{}
+	for section, keys := range s.Sections {
+		projected[section] = map[string]string{}
+		for key, value := range keys {
+			projected[section][key] = value
+		}
+	}
+	for section, keys := range p.Sections {
+		if projected[section] == nil {
+			projected[section] = map[string]string{}
+		}
+		for key, value := range keys {
+			projected[section][key] = value
+		}
+	}
+	p.Warnings = append(p.Warnings, configstore.DuplicateProfiles(projected)...)
+	sort.Slice(p.Warnings, func(i, j int) bool {
+		a, b := p.Warnings[i], p.Warnings[j]
+		if a.Code != b.Code {
+			return a.Code < b.Code
+		}
+		if a.IdentityKey != b.IdentityKey {
+			return a.IdentityKey < b.IdentityKey
+		}
+		if a.Profiles[0] != b.Profiles[0] {
+			return a.Profiles[0] < b.Profiles[0]
+		}
+		return a.Field < b.Field
+	})
 	sort.Slice(p.Results, func(i, j int) bool { return p.Results[i].Profile.Name < p.Results[j].Profile.Name })
 	return p, nil
 }
