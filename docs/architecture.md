@@ -14,6 +14,7 @@ Both the repository root and `cmd/aws-sso-profile-sync` delegate to the same CLI
 | --- | --- |
 | `domain` | Shared session, assignment, profile, result and error types; no tokens |
 | `cli` | Arguments, command flow, deadlines, browser notification and table/JSON output |
+| `settings` | Strict, opt-in JSON contexts that supply nonsecret command defaults |
 | `awsclient` | Explicit AWS SDK configuration, bounded retries and isolated emulator transport |
 | `auth` | Device authorization, explicit refresh and secure session-bound token storage |
 | `discovery` | Complete, paginated account-role discovery with bounded concurrency |
@@ -24,6 +25,7 @@ The planner takes ordinary data and returns a plan. It does not call AWS or writ
 
 ```mermaid
 flowchart LR
+    Settings[Optional named context] --> CLI
     CLI[CLI command] --> Read[Read config and ownership]
     Read --> Offline[Offline list or doctor]
     Read --> Auth[Bound session token]
@@ -68,7 +70,13 @@ Once a managed identity has a name, later plans reuse that name. Changing a pref
 
 Role selection is explicit when discovery finds multiple distinct roles. If exactly one role is available, it is selected with an explanation. Repeating `--role` selects several exact assigned roles.
 
-The ownership manifest authorizes updates to profiles the tool previously created. An existing unmanaged profile with a conflicting name is preserved and reported as a conflict. External changes to managed identity/settings, removal of a managed profile, or reuse of a session name for a different tenant/SSO region also block an update. There is no automatic adoption command.
+The ownership manifest authorizes updates to profiles the tool previously created. An existing unmanaged profile with a conflicting name is preserved and reported as a conflict. External changes to managed identity, removal of a managed profile, or reuse of a session name for a different tenant/SSO region also block an update. There is no automatic adoption command.
+
+Existing managed profile regions and output formats are preserved by default, including values edited manually after synchronization. Differing requested values produce `setting_preserved` warnings. The explicit `--override-profile-settings` flag changes only those two settings; it does not bypass ownership or identity checks. Reconciliation can update ownership metadata without replacing an unchanged configuration file.
+
+Duplicate inspection resolves legacy and named-session profiles to tenant URL, SSO region, account ID and role name, then hashes that tuple into a stable identity key. Profiles with the same identity produce a warning listing their names. Profile regions and session labels can differ without changing that identity. All aliases remain intact.
+
+Optional settings load only when `--settings-file` or `--context` is supplied. Explicit flags override context defaults; multiple contexts require a chosen or declared default. Settings contain no tokens, credentials, endpoint overrides or permission to override existing profile settings. Loading them performs no writes or authentication.
 
 Assignments that disappear from a complete discovery are reported as `stale`, and their profiles are retained. Selecting fewer roles does not by itself make another visible assignment stale. The tool never interprets missing access as permission to delete local configuration.
 

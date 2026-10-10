@@ -18,7 +18,7 @@ The examples below use `aws-sso-profile-sync` on PATH. Use the installed executa
 
 ## Choose the session and files
 
-Use the IAM Identity Center start URL and SSO region provided for your organization. The start URL is required for network commands and must be HTTPS, without embedded credentials, a query or a fragment. The SSO region locates Identity Center; the profile region is the default region for later AWS service commands.
+Use the IAM Identity Center start URL and SSO region provided for your organization. The start URL is required for network commands and must be HTTPS, without embedded credentials, a query or a fragment. The SSO region locates Identity Center; the profile region is the default region for later AWS service commands. Requested region/output defaults apply to new profiles and missing settings; existing values are preserved unless you explicitly authorize replacement.
 
 Replace these example values before any authorized real use. `example.invalid` is a placeholder, not an AWS tenant. `ReadOnly` is an example role name; select an exact role actually shown by discovery.
 
@@ -44,6 +44,70 @@ COMMON=(
 The explicit config path makes it clear which file will be managed. Without `--config-file`, the tool uses `AWS_CONFIG_FILE` when set, otherwise `~/.aws/config`. Without `--state-dir`, authentication state lives in `~/.aws-sso-profile-sync`.
 
 Before the first real sync, back up the chosen config and any adjacent `.aws-sso-sync.json` and `.aws-sso-sync.intent` files as a coherent set. The [manual acceptance procedure](manual-aws-acceptance.md) covers backup and recovery checks. Installation itself does not modify AWS configuration.
+
+## Optional settings and contexts
+
+Use a settings file when you regularly repeat the same tenant, session, roles or paths. Settings are optional: without `--settings-file` or `--context`, the CLI never reads one and existing flag behavior is unchanged. Create and maintain the file yourself; the tool only reads it.
+
+For example, `~/.aws-sso-profile-sync/settings.json` can contain:
+
+```json
+{
+  "schema_version": 1,
+  "default_context": "work",
+  "contexts": {
+    "work": {
+      "sso_start_url": "https://example.invalid/start",
+      "sso_session_name": "work",
+      "sso_region": "us-east-1",
+      "region": "us-east-2",
+      "roles": ["ReadOnly"],
+      "prefix": "team_",
+      "auto_prefix": true,
+      "output": "json",
+      "config_file": "../.aws/config",
+      "state_dir": "work-state"
+    },
+    "sandbox": {
+      "sso_start_url": "https://sandbox.invalid/start",
+      "sso_session_name": "sandbox",
+      "sso_region": "us-west-2",
+      "region": "us-west-2",
+      "roles": ["ReadOnly"],
+      "config_file": "sandbox/config",
+      "state_dir": "sandbox/state"
+    }
+  }
+}
+```
+
+These URLs and role names remain placeholders for later authorized use. The file must belong to your user, be a regular file smaller than 1 MiB, and have no group/world write permission; `chmod 600` is a suitable setting. Symlink files and path components are rejected, apart from standard macOS system aliases. Unknown or duplicate JSON keys, malformed values and unsupported schema versions are errors. The settings file cannot enable `--override-profile-settings`. Error messages do not echo settings contents.
+
+Select the context on each command:
+
+```bash
+aws-sso-profile-sync login --context work --open=false
+aws-sso-profile-sync discover --context work
+aws-sso-profile-sync plan --context work
+# After reviewing the plan:
+aws-sso-profile-sync sync --context work
+aws-sso-profile-sync doctor --context work
+```
+
+`--context` alone reads `~/.aws-sso-profile-sync/settings.json`. That location is fixed relative to HOME: changing `--state-dir` does not change which settings file is loaded. To select another file, use `--settings-file FILE`:
+
+```bash
+aws-sso-profile-sync plan --settings-file ./settings.json --context sandbox
+aws-sso-profile-sync plan --settings-file ./settings.json --role PowerUser --auto-prefix=false
+```
+
+In the second example, the declared `default_context` selects `work`; an explicit `--role` replaces the configured role list, and explicit boolean values override configured values. With no selected or declared default context, a sole context is used. Multiple contexts require an explicit choice. A missing file or context is an error, never a fallback to another tenant.
+
+For requested defaults, precedence is built-in defaults, then context values, then explicitly supplied flags. Existing managed region/output values are still preserved unless `--override-profile-settings` is explicit. Configured `region` therefore takes precedence over region environment fallbacks, while an explicit `--region` wins over both. Context values are optional; omitted values retain the CLI's existing defaults. An explicitly configured `sso_session_name` stays bound to that name, including `default`.
+
+Relative `config_file` and `state_dir` values resolve against the settings file's directory; they are not shell-expanded. In this example, the work config resolves to `~/.aws/config`, while work token state lives under `~/.aws-sso-profile-sync/work-state`. Relative paths passed explicitly through CLI flags keep their existing meaning relative to the current working directory.
+
+Allowed context fields are `sso_start_url`, `sso_session_name`, `sso_region`, `region`, `roles` (an array of exact role names), `prefix`, `auto_prefix`, `output`, `config_file` and `state_dir`. Do not store tokens, passwords, AWS credentials, test endpoints or command-action options in settings; they are rejected. A context supplies defaults only: it does not log in, open a browser, refresh a token or make read-only commands write files.
 
 ## Inspect the existing config offline
 
@@ -95,10 +159,24 @@ The table shows the proposed profile results and before/after key values. Review
 | Result | Meaning |
 | --- | --- |
 | `created` | A new managed profile is proposed |
-| `updated` | Settings of a matching managed profile would change |
+| `updated` | A missing setting would be filled, or an explicit override would change managed settings |
 | `unchanged` | Managed identity and settings already match |
 | `conflict` | Ownership, identity or external edits prevent a safe update |
 | `stale` | A formerly managed assignment is no longer visible; its profile is retained |
+
+Existing managed profiles keep their current `region` and `output`, even if you changed those values manually. A `setting_preserved` warning lists the profile, field, existing value and requested default when they differ. To deliberately replace those settings, review an explicit override plan, then use the same flag for sync:
+
+```bash
+aws-sso-profile-sync plan "${COMMON[@]}" --role "$ROLE" \
+  --region eu-west-1 --output json --override-profile-settings
+# After reviewing the requested replacement:
+aws-sso-profile-sync sync "${COMMON[@]}" --role "$ROLE" \
+  --region eu-west-1 --output json --override-profile-settings
+```
+
+The override covers only region/output on matching managed identities. It does not authorize unmanaged profile adoption, identity changes or session rebinding, and settings files cannot enable it.
+
+`duplicate_profiles` warnings group aliases for the same normalized tenant URL, SSO region, account ID and role. Offline `doctor`/`list` inspect current profiles; a plan inspects its projected configuration. Warnings identify the aliases and a stable identity digest, retain every alias, and do not block a valid operation by themselves. Neither duplicate warnings nor sync automatically deduplicate or delete profiles.
 
 Conflicts produce a nonzero exit and block sync. An existing manually configured profile is preserved; there is no automatic adoption or deletion. Stale profiles are informational and retained, including when a complete discovery returns no assignments.
 
@@ -109,7 +187,7 @@ aws-sso-profile-sync plan "${COMMON[@]}" \
   --region "$PROFILE_REGION" --role "$ROLE" --format json > plan.json
 ```
 
-JSON includes `schema_version: 1`, results, assignments, counts, proposed section values, a structured `diff`, and before/after config hashes. Stdout contains JSON; progress and errors use stderr. The artifact may contain account identifiers and configuration values, so review it before sharing. It is not an apply file: sync always discovers and plans again.
+JSON includes `schema_version: 1`, results, assignments, counts, proposed section values, a structured `diff`, before/after config hashes and optional structured `warnings`. Stdout contains JSON; progress and errors use stderr. The artifact may contain account identifiers and configuration values, so review it before sharing. It is not an apply file: sync always discovers and plans again.
 
 ## Sync with the same choices
 
@@ -166,14 +244,17 @@ Place flags after the command. `--help` lists the current defaults; Go's single-
 
 | Flag | Use |
 | --- | --- |
-| `--sso-start-url` | Required explicit HTTPS tenant URL for network commands |
+| `--settings-file` | Optional nonsecret JSON settings file; loaded only when requested |
+| `--context` | Named settings context; alone uses `~/.aws-sso-profile-sync/settings.json` |
+| `--sso-start-url` | Required HTTPS tenant URL for network commands, from a flag or selected context |
 | `--sso-session-name` | Named session, default `default`; if omitted, one matching existing session can supply its name. An explicit `default` remains explicit |
 | `--sso-region` | Identity Center service region, default `us-east-1` |
-| `--region` | Profile region; precedence is flag, `AWS_REGION`, `AWS_DEFAULT_REGION`, existing `[default]`, then `us-east-2` |
+| `--region` | Profile region; precedence is explicit flag, context, `AWS_REGION`, `AWS_DEFAULT_REGION`, existing `[default]`, then `us-east-2` |
 | `--role` | Exact assigned role; repeat for several roles |
 | `--prefix` | Custom prefix for new names; takes precedence over automatic prefixes |
 | `--auto-prefix=false` | Disable role-derived prefixes; automatic prefixes default to enabled |
-| `--output` | AWS profile output setting, default `json`; independent of CLI formatting |
+| `--output` | Requested AWS profile output default, `json`; independent of CLI formatting |
+| `--override-profile-settings` | Explicitly replace existing region/output on matching managed profiles; default false and forbidden in settings |
 | `--format` | CLI `table` or schema-versioned `json`, default `table` |
 | `--config-file` | Explicit shared-config path |
 | `--state-dir` | Private authentication state root |

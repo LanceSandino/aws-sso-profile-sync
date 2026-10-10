@@ -11,11 +11,14 @@ This **2.0.0-rc.1** candidate replaces that original implementation with explici
 ## What it does
 
 - Discovers the AWS accounts and roles assigned to your signed-in user, including paginated results.
+- Saves repeated nonsecret options in an optional settings file, with named contexts for different SSO sessions.
 - Selects one or several roles and creates distinct profile names from the account label, account ID and a stable identity suffix.
 - Shows proposed changes and before/after values in a table or versioned JSON; JSON also includes configuration hashes.
 - Preserves unrelated profiles, settings and comments. Existing unmanaged profiles are never silently adopted.
 - Reports removed assignments as stale and retains their profiles for review.
-- Refuses malformed configuration, conflicting session bindings, externally edited managed profiles and concurrent changes.
+- Preserves existing profile regions and output settings by default, with warnings when requested defaults differ. Explicit `--override-profile-settings` authorizes changing those settings on managed profiles.
+- Reports duplicate identity aliases without deleting, merging or adopting them.
+- Refuses malformed configuration, conflicting session bindings, externally edited managed identities and concurrent changes.
 - Uses bounded requests, advisory locking, atomic file replacement and recoverable ownership metadata; unchanged syncs preserve file bytes.
 
 It is a CLI, with no GUI, daemon, cloud provisioning or AWS CLI installation dependency. AWS CLI token interoperability still requires real acceptance testing.
@@ -77,6 +80,20 @@ Use `--format json` for CLI output; `--output` controls the AWS profile's output
 
 The original flags-only invocation still maps to `sync`, and single-dash flag spellings work. It now requires a separately completed login. Profile names have changed; old manually configured profiles stay unmanaged and preserved. There is no automatic adoption or deletion operation.
 
+## Optional settings and contexts
+
+For repeated use, put the tenant, named session, regions, roles and file paths in an optional JSON settings file. Named contexts let you switch between SSO sessions without repeating the same flags:
+
+```bash
+aws-sso-profile-sync login --context work --open=false
+aws-sso-profile-sync plan --context work
+aws-sso-profile-sync sync --context work
+```
+
+`--context` reads `~/.aws-sso-profile-sync/settings.json`; `--settings-file FILE` selects another file. Nothing is loaded unless one of those flags is supplied, and the tool never creates or updates settings. Explicit flags override context defaults, including replacing configured roles. Multiple contexts require a selected context or a declared default. Settings contain no tokens or credentials, and selecting a context does not log in.
+
+See [settings format and examples](docs/usage.md#optional-settings-and-contexts) for the schema, path rules and a complete example.
+
 ## Configuration and recovery
 
 Tokens are stored under `<state-dir>/auth`, bound to the named session, start URL, SSO region and endpoint, with owner-only permissions. The tool does not select or import AWS CLI token caches by timestamp.
@@ -93,13 +110,14 @@ The code uses Go-native packages with explicit boundaries:
 | --- | --- |
 | `internal/cli` | Commands, flags, output and coordination |
 | `internal/domain` | Shared session, assignment, profile and error contracts |
+| `internal/settings` | Read-only nonsecret context defaults and strict file validation |
 | `internal/auth` | Explicit login, token validation, refresh and private caching |
 | `internal/awsclient` | SDK construction and isolated emulator endpoint policy |
 | `internal/discovery` | Account and role enumeration with bounded concurrency |
 | `internal/planner` | Pure naming, role selection, ownership checks and change planning |
 | `internal/configstore` | Strict parsing, exact previews and guarded transactions |
 
-Authentication is explicit so a preview cannot unexpectedly sign in or change a cache. Managed profiles have stable identities so label changes do not create replacement profiles. Ownership checks protect existing configuration, and stale profiles are retained so lost access does not trigger deletion. Durable recovery intent connects configuration writes with ownership metadata across interruptions.
+Authentication is explicit so a preview cannot unexpectedly sign in or change a cache. Managed profiles have stable identities so label changes do not create replacement profiles. Ownership checks protect existing configuration, existing region/output settings stay intact unless explicitly overridden, and stale profiles are retained so lost access does not trigger deletion. Durable recovery intent connects configuration writes with ownership metadata across interruptions.
 
 Read [architecture and public design decisions](docs/architecture.md) for the data flow, storage model and tradeoffs.
 

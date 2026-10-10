@@ -10,6 +10,8 @@ Release notes describe user-visible changes, newest first.
 - Explicit login, discover, plan, sync, list and doctor commands.
 - Read-only plans with sorted before/after values and machine-readable JSON.
 - Private named-session token caching, explicit refresh and device authorization.
+- Optional named settings contexts for reusable SSO sessions, regions and role selections; command-line flags take precedence.
+- Duplicate-profile warnings with stable identity keys, while retaining manual aliases and script-dependent names.
 - Reproducible candidate archives, checksums, isolated installation and rollback instructions.
 - Native Linux and macOS validation for Intel and ARM targets, with separate emulator tests.
 
@@ -20,6 +22,7 @@ Release notes describe user-visible changes, newest first.
 - Role and account collisions, unmanaged profile takeover and conflicting named sessions are refused.
 - Missing assignments remain visible as stale profiles, including when all assignments disappear.
 - Invalid tokens, canceled operations and interrupted writes return actionable failures.
+- Existing profile regions and output formats are preserved, including manual edits. Changing them requires `--override-profile-settings`.
 
 ### Improved
 
