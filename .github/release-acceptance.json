@@ -2,7 +2,7 @@
   "schema_version": 1,
   "version": "2.0.0",
   "status": "PENDING",
-  "source_fingerprint": "sha256:6ff2e6184f5b94cc31afbc80b9f1a995f945b0bbd6d31a22a6e7e768a82bf6cc",
+  "source_fingerprint": "sha256:348d05c19c59d3cecdc85252abb7d401f1aa4ae4245ef0839d4ffb8c9fa2a645",
   "real_aws_acceptance": {
     "R01": "NOT_RUN",
     "R02": "NOT_RUN",

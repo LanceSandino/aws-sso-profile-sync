@@ -42,26 +42,37 @@ def checksums(text, names):
 
 
 def inspect_archive(data, version, target):
+    root = 'aws-sso-profile-sync_' + version + '_' + target.replace('/', '_')
     with tarfile.open(fileobj=io.BytesIO(data), mode='r:gz') as archive:
-        members = archive.getmembers()
-        names = [member.name for member in members]
-        if (len(names) != len(set(names)) or any('/' in name or name in ('.', '..') for name in names)
-                or any(not member.isfile() for member in members)):
-            raise ValueError('Unsafe or duplicate archive member')
+        members = {}
+        for member in archive.getmembers():
+            if not (member.isfile() or member.isdir()):
+                raise ValueError('Release archive contains a link or special member')
+            name = member.name.rstrip('/') if member.isdir() else member.name
+            path = pathlib.PurePosixPath(name)
+            if (not name or '\\' in name or path.is_absolute() or path.parts[0] != root
+                    or any(part in ('', '.', '..') for part in name.split('/'))
+                    or path.as_posix() != name or name in members):
+                raise ValueError('Unsafe, unexpected-root or duplicate archive member')
+            members[name] = member
+        if root not in members or not members[root].isdir():
+            raise ValueError('Missing expected release archive root directory')
         required = ('BUILD-METADATA.json', 'aws-sso-profile-sync', 'LICENSE', 'NOTICE', 'THIRD_PARTY_NOTICES.md')
         for name in required:
-            if name not in names or not archive.getmember(name).isfile():
+            if root + '/' + name not in members or not members[root + '/' + name].isfile():
                 raise ValueError('Missing regular release archive member')
-        if archive.getmember('BUILD-METADATA.json').size > 65536:
+        metadata_member = members[root + '/BUILD-METADATA.json']
+        if metadata_member.size > 65536:
             raise ValueError('Oversized build metadata')
-        metadata = json.loads(archive.extractfile('BUILD-METADATA.json').read())
+        metadata = json.loads(archive.extractfile(metadata_member).read())
         expected = {'version': version, 'target': target, 'execution': 'NATIVE_OFFLINE_SMOKE_PASS',
                     'real_aws_acceptance': 'PASS'}
         if not isinstance(metadata, dict) or any(metadata.get(key) != value for key, value in expected.items()):
             raise ValueError('Published archive native or real acceptance metadata differs')
-        if archive.getmember('aws-sso-profile-sync').size > 50 * 1024 * 1024:
+        binary = members[root + '/aws-sso-profile-sync']
+        if binary.size > 50 * 1024 * 1024:
             raise ValueError('Oversized release binary')
-        return hashlib.sha256(archive.extractfile('aws-sso-profile-sync').read()).hexdigest()
+        return hashlib.sha256(archive.extractfile(binary).read()).hexdigest()
 
 
 def validate_url(url):

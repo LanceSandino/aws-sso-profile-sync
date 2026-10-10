@@ -23,11 +23,17 @@ class PublishedTests(unittest.TestCase):
         metadata.update(changes)
         stream = io.BytesIO()
         with tarfile.open(fileobj=stream, mode='w:gz') as archive:
+            root = 'aws-sso-profile-sync_2.0.0_darwin_amd64'
+            for directory in (root, root + '/docs', root + '/scripts'):
+                info = tarfile.TarInfo(directory); info.type = tarfile.DIRTYPE
+                archive.addfile(info)
             for name, data in {'BUILD-METADATA.json': json.dumps(metadata).encode(),
                                'aws-sso-profile-sync': b'synthetic binary',
                                'LICENSE': b'synthetic license', 'NOTICE': b'synthetic notice',
-                               'THIRD_PARTY_NOTICES.md': b'synthetic dependency notice'}.items():
-                info = tarfile.TarInfo(name); info.size = len(data)
+                               'THIRD_PARTY_NOTICES.md': b'synthetic dependency notice',
+                               'docs/install.md': b'synthetic instructions',
+                               'scripts/install.sh': b'synthetic installer'}.items():
+                info = tarfile.TarInfo(root + '/' + name); info.size = len(data)
                 archive.addfile(info, io.BytesIO(data))
         return stream.getvalue()
 
@@ -67,13 +73,41 @@ class PublishedTests(unittest.TestCase):
             with self.subTest(name=name), self.assertRaises(ValueError):
                 published.inspect_archive(stream.getvalue(), '2.0.0', 'darwin/amd64')
 
+    def test_actual_package_layout_is_accepted(self):
+        self.assertEqual(published.inspect_archive(self.archive(), '2.0.0', 'darwin/amd64'),
+                         hashlib.sha256(b'synthetic binary').hexdigest())
+
+    def test_nested_archive_rejects_path_and_member_attacks(self):
+        root = 'aws-sso-profile-sync_2.0.0_darwin_amd64'
+        attacks = [(root + '/docs/../../escape', tarfile.REGTYPE),
+                   (root + '/docs/./alias', tarfile.REGTYPE),
+                   (root + '//docs/alias', tarfile.REGTYPE),
+                   ('/' + root + '/absolute', tarfile.REGTYPE),
+                   ('different-root/file', tarfile.REGTYPE),
+                   (root + '/BUILD-METADATA.json', tarfile.REGTYPE),
+                   (root + '/docs', tarfile.DIRTYPE),
+                   (root + '/hardlink', tarfile.LNKTYPE),
+                   (root + '/symlink', tarfile.SYMTYPE),
+                   (root + '/fifo', tarfile.FIFOTYPE)]
+        for name, kind in attacks:
+            stream = io.BytesIO()
+            with tarfile.open(fileobj=io.BytesIO(self.archive()), mode='r:gz') as original, \
+                 tarfile.open(fileobj=stream, mode='w:gz') as archive:
+                for member in original.getmembers():
+                    archive.addfile(member, original.extractfile(member) if member.isfile() else None)
+                member = tarfile.TarInfo(name); member.type = kind
+                if kind in (tarfile.LNKTYPE, tarfile.SYMTYPE): member.linkname = root + '/aws-sso-profile-sync'
+                archive.addfile(member)
+            with self.subTest(name=name, kind=kind), self.assertRaises(ValueError):
+                published.inspect_archive(stream.getvalue(), '2.0.0', 'darwin/amd64')
+
     def test_unexpected_symlink_member_is_rejected(self):
         stream = io.BytesIO()
         original = tarfile.open(fileobj=io.BytesIO(self.archive()), mode='r:gz')
         with original, tarfile.open(fileobj=stream, mode='w:gz') as archive:
             for member in original.getmembers():
-                archive.addfile(member, original.extractfile(member))
-            member = tarfile.TarInfo('unexpected-link'); member.type = tarfile.SYMTYPE
+                archive.addfile(member, original.extractfile(member) if member.isfile() else None)
+            member = tarfile.TarInfo('aws-sso-profile-sync_2.0.0_darwin_amd64/unexpected-link'); member.type = tarfile.SYMTYPE
             member.linkname = '/outside-owned-directory'
             archive.addfile(member)
         with self.assertRaises(ValueError):
