@@ -17,6 +17,7 @@ not replace upstream license terms.
 | `github.com/aws/aws-sdk-go-v2/service/sso` | `v1.29.3` | Apache-2.0 |
 | `github.com/aws/aws-sdk-go-v2/service/ssooidc` | `v1.34.4` | Apache-2.0 |
 | `github.com/aws/smithy-go` | `v1.28.5` | Apache-2.0 |
+| `golang.org/x/sys` | `v0.45.0` | BSD-3-Clause |
 
 AWS SDK modules are available from https://github.com/aws/aws-sdk-go-v2;
 Smithy Go is available from https://github.com/aws/smithy-go. Upstream
@@ -520,7 +521,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ```
 
-### golang.org/x/sys (Go standard-library vendor)
+### golang.org/x/sys v0.45.0 (production dependency)
 
 ```text
 Copyright 2009 The Go Authors.
