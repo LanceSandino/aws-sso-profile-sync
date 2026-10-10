@@ -2,7 +2,7 @@ package auth
 
 import (
 	"context"
-	"github.com/LanceSandino/aws-sso-profile-sync/internal/domain"
+	"github.com/LanceSandino/aws-sso-profile-sync/v2/internal/domain"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ssooidc"
 	"github.com/aws/aws-sdk-go-v2/service/ssooidc/types"

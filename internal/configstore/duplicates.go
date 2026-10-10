@@ -9,7 +9,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/LanceSandino/aws-sso-profile-sync/internal/domain"
+	"github.com/LanceSandino/aws-sso-profile-sync/v2/internal/domain"
 )
 
 // DuplicateProfiles reports aliases for the same tenant, SSO region, account and role.

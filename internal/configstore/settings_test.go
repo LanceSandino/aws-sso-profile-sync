@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/LanceSandino/aws-sso-profile-sync/internal/domain"
+	"github.com/LanceSandino/aws-sso-profile-sync/v2/internal/domain"
 )
 
 func mutableEdit(t *testing.T) (Store, Snapshot, map[string]map[string]string, map[string]domain.Profile) {

@@ -1,6 +1,6 @@
 # Development and local acceptance
 
-The module is `github.com/LanceSandino/aws-sso-profile-sync`, using Go-native `cmd/` and `internal/` packages with adjacent tests. The module minimum is Go 1.25; validation currently targets Go 1.27.1. Unit tests run without Docker. Integration needs Docker and Testcontainers-Go 0.42.0.
+The module is `github.com/LanceSandino/aws-sso-profile-sync/v2`, using Go-native `cmd/` and `internal/` packages with adjacent tests. The module minimum is Go 1.25; validation currently targets Go 1.27.1. Unit tests run without Docker. Integration needs Docker and Testcontainers-Go 0.42.0.
 
 Never develop with real AWS endpoints, actual AWS credentials, or personal AWS configuration. `scripts/check.sh` scrubs inherited `AWS_*` variables, creates a disposable HOME with explicit config/credentials paths and synthetic credentials, and uses temporary Go caches. Test-only SDK construction rejects nonloopback endpoints, inherited production credentials and paths outside the disposable root. Clients do not load default AWS configuration or IMDS.
 
@@ -42,9 +42,9 @@ Docker absence, container startup failure, seed failure or empty test selection 
 
 ## CI and evidence
 
-`.github/workflows/validate.yml` runs separate native Linux amd64/arm64 and macOS Intel/ARM jobs, a minimum Go 1.25 compile job, and Linux Docker integration. It uses read-only repository permissions, disables persisted checkout credentials, uses disposable paths and no AWS secrets, rejects skipped tests, and requires all F01–F10 cases. Native installation smoke runs on each target. Official actions are pinned to immutable revisions; `macos-15-intel` is listed in the [official runner image inventory](https://github.com/actions/runner-images/blob/main/README.md). The published 2.0.0 release passed all six hosted validation jobs; future changes must pass their own runs.
+`.github/workflows/validate.yml` runs separate native Linux amd64/arm64 and macOS Intel/ARM jobs, a minimum Go 1.25 compile job, and Linux Docker integration. It uses read-only repository permissions, disables persisted checkout credentials, uses disposable paths and no AWS secrets, rejects skipped tests, and requires all F01–F10 cases. Native installation smoke runs on each target. Official actions are pinned to immutable revisions; `macos-15-intel` is listed in the [official runner image inventory](https://github.com/actions/runner-images/blob/main/README.md). The published 2.0.1 release passed all six hosted validation jobs; future changes must pass their own runs.
 
-Real AWS acceptance for published 2.0.0 is recorded separately in the [tagged acceptance record](https://github.com/LanceSandino/aws-sso-profile-sync/blob/v2.0.0/.github/release-acceptance.json). Emulator results do not satisfy that gate. Test cache/state and raw logs do not belong in public source or release archives; see [manual acceptance](manual-aws-acceptance.md).
+Real AWS acceptance for published 2.0.1 is recorded separately in the [tagged acceptance record](https://github.com/LanceSandino/aws-sso-profile-sync/blob/v2.0.1/.github/release-acceptance.json). Emulator results do not satisfy that gate. Test cache/state and raw logs do not belong in public source or release archives; see [manual acceptance](manual-aws-acceptance.md).
 
 ## Repository layout
 

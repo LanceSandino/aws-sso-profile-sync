@@ -5,7 +5,7 @@ package configstore
 import (
 	"context"
 	"errors"
-	"github.com/LanceSandino/aws-sso-profile-sync/internal/domain"
+	"github.com/LanceSandino/aws-sso-profile-sync/v2/internal/domain"
 	"os"
 	"path/filepath"
 	"syscall"

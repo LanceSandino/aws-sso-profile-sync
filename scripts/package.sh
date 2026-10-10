@@ -36,7 +36,7 @@ for TASK_TARGET in $TASK_TARGETS; do
   TASK_NAME="aws-sso-profile-sync_${TASK_VERSION}_${TASK_OS}_${TASK_ARCH}"
   TASK_STAGE="$TASK_BUILD_ROOT/$TASK_NAME"
   mkdir -p "$TASK_STAGE/docs" "$TASK_STAGE/scripts"
-  CGO_ENABLED=0 GOOS="$TASK_OS" GOARCH="$TASK_ARCH" go build -trimpath -buildvcs=false -ldflags "-s -w -buildid= -X github.com/LanceSandino/aws-sso-profile-sync/internal/cli.Version=$TASK_VERSION" -o "$TASK_STAGE/aws-sso-profile-sync" ./cmd/aws-sso-profile-sync
+  CGO_ENABLED=0 GOOS="$TASK_OS" GOARCH="$TASK_ARCH" go build -trimpath -buildvcs=false -ldflags "-s -w -buildid= -X github.com/LanceSandino/aws-sso-profile-sync/v2/internal/cli.Version=$TASK_VERSION" -o "$TASK_STAGE/aws-sso-profile-sync" ./cmd/aws-sso-profile-sync
   cp README.md "$TASK_STAGE/README.md"
   cp docs/install.md docs/manual-aws-acceptance.md docs/usage.md docs/architecture.md docs/development.md docs/releasing.md "$TASK_STAGE/docs/"
   cp scripts/install.sh "$TASK_STAGE/scripts/"

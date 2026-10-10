@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/LanceSandino/aws-sso-profile-sync/internal/domain"
+	"github.com/LanceSandino/aws-sso-profile-sync/v2/internal/domain"
 )
 
 func TestC01NestedAndInlineComments(t *testing.T) {

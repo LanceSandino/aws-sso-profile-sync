@@ -3,8 +3,8 @@
 package cli
 
 import (
-	"github.com/LanceSandino/aws-sso-profile-sync/internal/domain"
-	"github.com/LanceSandino/aws-sso-profile-sync/internal/settings"
+	"github.com/LanceSandino/aws-sso-profile-sync/v2/internal/domain"
+	"github.com/LanceSandino/aws-sso-profile-sync/v2/internal/settings"
 	"path/filepath"
 )
 

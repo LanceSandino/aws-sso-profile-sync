@@ -4,8 +4,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/LanceSandino/aws-sso-profile-sync/internal/configstore"
-	"github.com/LanceSandino/aws-sso-profile-sync/internal/domain"
+	"github.com/LanceSandino/aws-sso-profile-sync/v2/internal/configstore"
+	"github.com/LanceSandino/aws-sso-profile-sync/v2/internal/domain"
 )
 
 func managedSettings(t *testing.T) (configstore.Snapshot, []domain.Assignment, Options, string) {

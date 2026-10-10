@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/LanceSandino/aws-sso-profile-sync/internal/configstore"
+	"github.com/LanceSandino/aws-sso-profile-sync/v2/internal/configstore"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sso"
 )

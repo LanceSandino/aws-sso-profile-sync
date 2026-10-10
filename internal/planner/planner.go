@@ -5,8 +5,8 @@ package planner
 import (
 	"crypto/sha256"
 	"fmt"
-	"github.com/LanceSandino/aws-sso-profile-sync/internal/configstore"
-	"github.com/LanceSandino/aws-sso-profile-sync/internal/domain"
+	"github.com/LanceSandino/aws-sso-profile-sync/v2/internal/configstore"
+	"github.com/LanceSandino/aws-sso-profile-sync/v2/internal/domain"
 	"regexp"
 	"sort"
 	"strings"

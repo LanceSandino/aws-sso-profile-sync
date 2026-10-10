@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"github.com/LanceSandino/aws-sso-profile-sync/internal/cli"
+	"github.com/LanceSandino/aws-sso-profile-sync/v2/internal/cli"
 	"os"
 	"path/filepath"
 	"testing"
