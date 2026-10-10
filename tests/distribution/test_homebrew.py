@@ -12,6 +12,7 @@ import tempfile
 import threading
 import time
 from unittest.mock import patch
+import urllib.request
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -112,6 +113,45 @@ class HomebrewWorkflow(unittest.TestCase):
                 self.assertEqual((tap / "Formula/aws-sso-profile-sync.rb").read_bytes(), source.read_bytes())
                 self.assertEqual(source.stat().st_mtime_ns, 1600000000000000000)
                 self.assertEqual(log.read_text().splitlines(), ["style", "audit", "style", "audit"])
+
+    def test_candidate_loopback_server_starts_without_dns_lookup(self):
+        workflow = (ROOT / "packaging/homebrew/tap/.github/workflows/candidate.yml").read_text()
+        match = re.search(r"          python3 - \"\$candidate\" \"\$port_file\" <<'PY' &\n(.*?)          PY", workflow, re.S)
+        self.assertIsNotNone(match)
+        script = "\n".join(line[10:] for line in match[1].splitlines())
+        reject_dns = "import socket\ndef reject_dns(*args, **kwargs): raise RuntimeError('unexpected DNS lookup')\nsocket.getfqdn = reject_dns\n"
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            archive = root / "synthetic-candidate.tar.gz"
+            archive.write_bytes(b"synthetic archive bytes")
+            port_file = root / "port"
+            env = {"PATH": os.environ["PATH"], "HOME": directory}
+            server = subprocess.Popen([sys.executable, "-c", reject_dns + script, directory, str(port_file)],
+                                      env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            try:
+                deadline = time.monotonic() + 5
+                while not port_file.exists() or not port_file.stat().st_size:
+                    if server.poll() is not None:
+                        stdout, stderr = server.communicate(timeout=1)
+                        self.fail("candidate server exited before readiness: " + stdout + stderr)
+                    self.assertLess(time.monotonic(), deadline, "candidate server readiness unbounded")
+                    time.sleep(0.05)
+                port = int(port_file.read_text())
+                opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+                with opener.open(f"http://127.0.0.1:{port}/synthetic-candidate.tar.gz", timeout=2) as response:
+                    self.assertEqual(response.status, 200)
+                    self.assertEqual(response.read(), archive.read_bytes())
+            finally:
+                if server.poll() is None:
+                    server.terminate()
+                try:
+                    stdout, stderr = server.communicate(timeout=2)
+                except subprocess.TimeoutExpired:
+                    server.kill()
+                    stdout, stderr = server.communicate(timeout=2)
+            self.assertEqual(stdout.splitlines(), ["Candidate HTTP server: imports", "Candidate HTTP server: directory",
+                                                  "Candidate HTTP server: bind", "Candidate HTTP server: ready"])
+            self.assertNotIn("unexpected DNS lookup", stderr)
 
     def candidate_readiness_script(self):
         workflow = (ROOT / "packaging/homebrew/tap/.github/workflows/candidate.yml").read_text()

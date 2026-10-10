@@ -102,10 +102,19 @@ jobs:
           port_file="$RUNNER_TEMP/homebrew-candidate-port"
           rm -f "$port_file"
           python3 - "$candidate" "$port_file" <<'PY' &
-          import http.server, os, pathlib, sys
+          print('Candidate HTTP server: imports', flush=True)
+          import http.server, os, pathlib, socketserver, sys
+          print('Candidate HTTP server: directory', flush=True)
           os.chdir(sys.argv[1])
-          server=http.server.ThreadingHTTPServer(('127.0.0.1', 0), http.server.SimpleHTTPRequestHandler)
+          class LoopbackHTTPServer(http.server.ThreadingHTTPServer):
+              def server_bind(self):
+                  socketserver.TCPServer.server_bind(self)
+                  self.server_name='127.0.0.1'
+                  self.server_port=self.server_address[1]
+          print('Candidate HTTP server: bind', flush=True)
+          server=LoopbackHTTPServer(('127.0.0.1', 0), http.server.SimpleHTTPRequestHandler)
           pathlib.Path(sys.argv[2]).write_text(str(server.server_port))
+          print('Candidate HTTP server: ready', flush=True)
           server.serve_forever()
           PY
           server_pid=$!
