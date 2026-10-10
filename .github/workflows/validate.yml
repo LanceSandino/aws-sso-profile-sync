@@ -1,0 +1,157 @@
+name: Local validation
+on:
+  pull_request:
+  push:
+    branches: [main, 'feature/**']
+  workflow_dispatch:
+  workflow_call:
+permissions:
+  contents: read
+concurrency:
+  group: local-validation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  unit:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: linux-amd64
+            runner: ubuntu-24.04
+            target: linux/amd64
+          - id: linux-arm64
+            runner: ubuntu-24.04-arm
+            target: linux/arm64
+          - id: darwin-amd64
+            runner: macos-15-intel
+            target: darwin/amd64
+          - id: darwin-arm64
+            runner: macos-15
+            target: darwin/arm64
+    name: Native validation (${{ matrix.id }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Prepare disposable task caches
+        run: |
+          printf 'GOCACHE=%s/aws-sso-go-build\nGOMODCACHE=%s/aws-sso-go-mod\nCHECK_OUTPUT_DIR=%s/quality-results\n' "$RUNNER_TEMP" "$RUNNER_TEMP" "$RUNNER_TEMP" >> "$GITHUB_ENV"
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version: '1.27.1'
+          cache: false
+      - name: Public source and release tooling checks
+        env:
+          PR_BASE_REF: ${{ github.base_ref }}
+          PUBLIC_BASE: 5af29353fd61ba75a7806c5b1d8822b688955f41
+        run: |
+          set -euo pipefail
+          base="$PUBLIC_BASE"
+          if [ -n "$PR_BASE_REF" ]; then base=$(git merge-base HEAD "origin/$PR_BASE_REF"); fi
+          python3 scripts/check_public.py --base "$base"
+          python3 scripts/release.py check
+      - name: Syntax preflight
+        run: |
+          /bin/bash -n scripts/check.sh
+          /bin/bash -n scripts/package.sh
+          /bin/bash -n scripts/install.sh
+      - name: Isolated fmt, build, vet, race, coverage and bounded fuzz
+        run: /bin/bash scripts/check.sh
+      - name: Native candidate and isolated installation smoke
+        env:
+          TARGETS: ${{ matrix.target }}
+          TARGET_ID: ${{ matrix.id }}
+          OUTPUT_DIR: ${{ runner.temp }}/candidate
+          SOURCE_DATE_EPOCH: '0'
+        run: |
+          /bin/bash scripts/package.sh
+          python3 scripts/check_public.py --base 5af29353fd61ba75a7806c5b1d8822b688955f41 --archives "$OUTPUT_DIR"
+          archive=$(find "$OUTPUT_DIR" -name '*.tar.gz' -type f)
+          /bin/bash scripts/install.sh "$archive" --prefix "$RUNNER_TEMP/candidate-install"
+          mv "$OUTPUT_DIR/SHA256SUMS" "$OUTPUT_DIR/SHA256SUMS-$TARGET_ID"
+          env -i PATH="$PATH" HOME="$RUNNER_TEMP/candidate-install-home" "$RUNNER_TEMP/candidate-install/bin/aws-sso-profile-sync" --version
+          mkdir -p "$RUNNER_TEMP/candidate-install-home"
+          env -i PATH="$PATH" HOME="$RUNNER_TEMP/candidate-install-home" AWS_CONFIG_FILE="$RUNNER_TEMP/candidate-install-home/config" "$RUNNER_TEMP/candidate-install/bin/aws-sso-profile-sync" doctor --format json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: always()
+        with:
+          name: quality-${{ matrix.id }}
+          path: ${{ runner.temp }}/quality-results
+          if-no-files-found: error
+          retention-days: 7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: candidate-${{ matrix.id }}
+          path: ${{ runner.temp }}/candidate
+          if-no-files-found: error
+          retention-days: 7
+  minimum-go:
+    name: Minimum Go 1.25 compile
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      GOTOOLCHAIN: local
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Prepare disposable minimum-toolchain caches
+        run: |
+          printf 'GOCACHE=%s/aws-sso-min-go-build\nGOMODCACHE=%s/aws-sso-min-go-mod\n' "$RUNNER_TEMP" "$RUNNER_TEMP" >> "$GITHUB_ENV"
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version: '1.25.x'
+          cache: false
+      - name: Compile with minimum supported Go series
+        run: |
+          go version
+          go build ./...
+  floci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      AWS_EC2_METADATA_DISABLED: 'true'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Prepare disposable integration caches
+        run: |
+          printf 'GOCACHE=%s/aws-sso-go-build\nGOMODCACHE=%s/aws-sso-go-mod\n' "$RUNNER_TEMP" "$RUNNER_TEMP" >> "$GITHUB_ENV"
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version: '1.27.1'
+          cache: false
+      - name: Seeded pinned Floci and compiled CLI acceptance
+        shell: bash
+        run: |
+          set -euo pipefail
+          for key in $(compgen -e); do case "$key" in AWS_*) unset "$key" ;; esac; done
+          export HOME="$RUNNER_TEMP/floci-home" AWS_CONFIG_FILE="$RUNNER_TEMP/floci-home/config" AWS_SHARED_CREDENTIALS_FILE="$RUNNER_TEMP/floci-home/credentials"
+          export AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test AWS_EC2_METADATA_DISABLED=true GOENV=off GOFLAGS=
+          mkdir -p "$HOME" "$RUNNER_TEMP/floci-evidence"
+          docker info > /dev/null
+          go test -tags integration -list '^TestFlociCLIJourney$' ./tests/integration | tee "$RUNNER_TEMP/floci-evidence/selected.txt"
+          grep -q '^TestFlociCLIJourney$' "$RUNNER_TEMP/floci-evidence/selected.txt"
+          go test -tags integration -json -v -count=1 ./tests/integration -timeout 8m > "$RUNNER_TEMP/floci-evidence/results.jsonl"
+          python3 - "$RUNNER_TEMP/floci-evidence/results.jsonl" <<'PY'
+          import json, sys
+          records=[json.loads(line) for line in open(sys.argv[1])]
+          passes={r.get('Test') for r in records if r.get('Action')=='pass'}
+          skips=[r for r in records if r.get('Action')=='skip']
+          assert 'TestFlociCLIJourney' in passes and not skips, 'Floci suite absent, failed or skipped'
+          for case in range(1,11):
+              prefix=f'TestFlociCLIJourney/F{case:02d}_'
+              assert any(name and name.startswith(prefix) for name in passes), f'F{case:02d} acceptance missing'
+          print(f'Floci: {len(passes)} passing tests/subtests; F01-F10 selected; zero skips')
+          PY
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: always()
+        with:
+          name: floci-evidence
+          path: ${{ runner.temp }}/floci-evidence
+          if-no-files-found: error
+          retention-days: 7

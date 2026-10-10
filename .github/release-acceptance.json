@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "version": "2.0.0",
+  "status": "PASS",
+  "source_fingerprint": "sha256:01d97818240b99fd37b57366e396a400555e101ceb2ebf2c2f8e22ccee607c02",
+  "real_aws_acceptance": {
+    "R01": "PASS",
+    "R02": "PASS",
+    "R03": "PASS",
+    "R04": "PASS",
+    "R05": "PASS",
+    "R06": "PASS",
+    "R07": "PASS",
+    "R08": "PASS",
+    "R09": "PASS"
+  },
+  "notes": "Fresh owner-authorized R01-R09 passed on final stable source 93a5475, version 2.0.0 and its release-flag binary. Independent AWS CLI full account/role discovery matched; generated identity, repeat sync, eight preservation/settings read-only plans, forced copied-token expiry with real refresh, two named sessions and two profile regions at one provider region, and private recovery evidence passed. Original work checkout/configuration/adjacent state were preserved; no IAM mutations or personal CLI cache import. Natural expiry, other tenants/partitions and other provider regions were not certified. Owner authorizes conditional merge, verified stable publication and public Homebrew validation."
+}

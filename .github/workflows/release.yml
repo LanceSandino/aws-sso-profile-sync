@@ -1,0 +1,130 @@
+name: Prepare approved draft release
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: approved-draft-release
+  cancel-in-progress: false
+jobs:
+  eligibility:
+    name: Verify version and owner acceptance
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.gate.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Reject other branches and pending or stale acceptance
+        id: gate
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          test "$DEFAULT_BRANCH" = main
+          test "$GITHUB_REF" = refs/heads/main
+          python3 scripts/release.py gate
+          version=$(python3 scripts/release.py version)
+          printf 'version=%s\n' "$version" >> "$GITHUB_OUTPUT"
+  validation:
+    name: Required native validation and real Floci
+    needs: eligibility
+    uses: ./.github/workflows/validate.yml
+    permissions:
+      contents: read
+  draft:
+    name: Owner-approved annotated tag and draft assets
+    needs: [eligibility, validation]
+    if: github.ref == 'refs/heads/main' && github.event.repository.default_branch == 'main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: release
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          pattern: candidate-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/release-assets
+      - name: Verify four native archives and combine checksums
+        env:
+          RELEASE_ASSETS: ${{ runner.temp }}/release-assets
+          RELEASE_VERSION: ${{ needs.eligibility.outputs.version }}
+        run: |
+          set -euo pipefail
+          python3 scripts/release.py version --expect "$RELEASE_VERSION"
+          python3 scripts/release.py gate
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib, tarfile
+          root=pathlib.Path(os.environ['RELEASE_ASSETS'])
+          version=os.environ['RELEASE_VERSION']
+          targets=('darwin/amd64','darwin/arm64','linux/amd64','linux/arm64')
+          expected={f'aws-sso-profile-sync_{version}_{target.replace("/","_")}.tar.gz':target for target in targets}
+          actual={p.name:p for p in root.glob('*.tar.gz')}
+          if set(actual)!=set(expected): raise SystemExit('Exactly four native target archives are required')
+          lines=[]
+          for name,target in sorted(expected.items()):
+              manifest=root/f'SHA256SUMS-{target.replace("/","-")}'
+              records=[line.split(maxsplit=1) for line in manifest.read_text().splitlines()]
+              if len(records)!=1 or records[0][1]!=name: raise SystemExit('Target checksum manifest does not match archive')
+              checksum=hashlib.sha256(actual[name].read_bytes()).hexdigest()
+              if records[0][0]!=checksum: raise SystemExit('Candidate archive checksum mismatch')
+              with tarfile.open(actual[name],'r:gz') as archive:
+                  metadata=[m for m in archive.getmembers() if pathlib.PurePosixPath(m.name).name=='BUILD-METADATA.json' and m.isfile()]
+                  if len(metadata)!=1 or metadata[0].size>65536: raise SystemExit('Invalid archive build metadata')
+                  value=json.load(archive.extractfile(metadata[0]))
+                  if value.get('version')!=version or value.get('target')!=target or value.get('execution')!='NATIVE_OFFLINE_SMOKE_PASS': raise SystemExit('Unverified native archive metadata')
+              lines.append(f'{checksum}  {name}\n')
+          (root/'SHA256SUMS').write_text(''.join(lines))
+          PY
+          python3 scripts/check_public.py --base 5af29353fd61ba75a7806c5b1d8822b688955f41 --archives "$RELEASE_ASSETS"
+          python3 scripts/homebrew.py --version-file VERSION --dist-dir "$RELEASE_ASSETS" --output "$RUNNER_TEMP/homebrew-formula/aws-sso-profile-sync.rb"
+      - name: Preserve Homebrew handoff for later owner review
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: homebrew-handoff
+          path: ${{ runner.temp }}/homebrew-formula/aws-sso-profile-sync.rb
+          if-no-files-found: error
+          retention-days: 7
+      - name: Create annotated version tag and draft release only
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_VERSION: ${{ needs.eligibility.outputs.version }}
+          RELEASE_ASSETS: ${{ runner.temp }}/release-assets
+          RELEASE_TAGGER_NAME: ${{ vars.RELEASE_TAGGER_NAME }}
+          RELEASE_TAGGER_EMAIL: ${{ vars.RELEASE_TAGGER_EMAIL }}
+        run: |
+          set -euo pipefail
+          test -n "$RELEASE_TAGGER_NAME"
+          test -n "$RELEASE_TAGGER_EMAIL"
+          python3 scripts/release.py gate
+          python3 scripts/release.py version --expect "$RELEASE_VERSION"
+          current_main=$(gh api "repos/$GH_REPO/git/ref/heads/main" --jq '.object.sha')
+          test "$current_main" = "$GITHUB_SHA"
+          tag="v$RELEASE_VERSION"
+          python3 - <<'PY'
+          import datetime, json, os, pathlib
+          value={'tag':'v'+os.environ['RELEASE_VERSION'],'message':'AWS SSO Profile Sync '+os.environ['RELEASE_VERSION'],
+                 'object':os.environ['GITHUB_SHA'],'type':'commit',
+                 'tagger':{'name':os.environ['RELEASE_TAGGER_NAME'],'email':os.environ['RELEASE_TAGGER_EMAIL'],
+                           'date':datetime.datetime.now(datetime.timezone.utc).isoformat()}}
+          (pathlib.Path(os.environ['RUNNER_TEMP'])/'release-tag.json').write_text(json.dumps(value))
+          PY
+          tag_object=$(gh api --method POST "repos/$GH_REPO/git/tags" --input "$RUNNER_TEMP/release-tag.json" --jq '.sha')
+          gh api --method POST "repos/$GH_REPO/git/refs" -f ref="refs/tags/$tag" -f sha="$tag_object" > /dev/null
+          cp CHANGELOG.md "$RUNNER_TEMP/release-notes.md"
+          prerelease=()
+          if python3 -c 'import os,sys;sys.exit(0 if "-" in os.environ["RELEASE_VERSION"].split("+",1)[0] else 1)'; then prerelease=(--prerelease); fi
+          gh release create "$tag" "$RELEASE_ASSETS"/*.tar.gz "$RELEASE_ASSETS/SHA256SUMS" \
+            --verify-tag --draft "${prerelease[@]}" --title "AWS SSO Profile Sync $RELEASE_VERSION" \
+            --notes-file "$RUNNER_TEMP/release-notes.md"
