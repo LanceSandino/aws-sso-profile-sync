@@ -175,6 +175,11 @@ func TestLocalCLIJourneyP08P09A08(t *testing.T) {
 		t.Fatal(err)
 	}
 	cacheBefore, _ := os.ReadFile(tokenStore.Path())
+	settingsPath := writeSettings(t, root, `{"schema_version":1,"contexts":{"sample":{"sso_start_url":"https://sample.invalid/start","sso_session_name":"sample","region":"us-east-2","roles":["AWSReadOnlyAccess"],"config_file":".aws/config","state_dir":".aws-sso-profile-sync"}}}`)
+	configuredPlan, _, configuredCode := run(t, "plan", "--settings-file", settingsPath, "--test-root", root, "--test-endpoint", server.URL, "--format", "json")
+	if configuredCode != 0 || len(configuredPlan.Results) != 1 || configuredPlan.Results[0].Status != "created" || !strings.Contains(configuredPlan.Explanation, "settings context") {
+		t.Fatal("configured context did not drive isolated plan", configuredPlan)
+	}
 	e, _, code := run(t, append([]string{"plan"}, base...)...)
 	if code != 0 || len(e.Results) != 1 || e.Results[0].Status != "created" || e.ConfigBefore == e.ConfigAfter {
 		t.Fatal(code, e)
@@ -218,15 +223,32 @@ func TestLocalCLIJourneyP08P09A08(t *testing.T) {
 		t.Fatal(e)
 	}
 	invalid = false
-	os.WriteFile(root+"/.aws/config", bytes.ReplaceAll(configBefore, []byte("region = us-east-2"), []byte("region = us-west-1")), 0600)
+	edited := bytes.ReplaceAll(configBefore, []byte("region = us-east-2"), []byte("region = us-west-1"))
+	os.WriteFile(root+"/.aws/config", edited, 0600)
+	infoBefore, _ := os.Stat(root + "/.aws/config")
 	e, _, code = run(t, append([]string{"sync"}, base...)...)
+	if code != 0 || e.Counts["unchanged"] != 1 || len(e.Warnings) == 0 || e.Warnings[0].Code != "setting_preserved" {
+		t.Fatal("mutable region was not preserved with warning", e)
+	}
+	got, _ := os.ReadFile(root + "/.aws/config")
+	infoAfter, _ := os.Stat(root + "/.aws/config")
+	if !bytes.Equal(got, edited) || !infoBefore.ModTime().Equal(infoAfter.ModTime()) {
+		t.Fatal("default sync rewrote preserved profile settings")
+	}
+	e, _, code = run(t, append([]string{"plan", "--override-profile-settings", "--region", "eu-west-1"}, base...)...)
+	if code != 0 || e.Counts["updated"] != 1 || len(e.Diff) != 1 || e.Diff[0].Key != "region" || e.Diff[0].After != "eu-west-1" {
+		t.Fatal("explicit managed-region override not planned", e)
+	}
+	// Identity edits still block synchronization, even with override authorization.
+	os.WriteFile(root+"/.aws/config", bytes.ReplaceAll(configBefore, []byte("sso_role_name = AWSReadOnlyAccess"), []byte("sso_role_name = PowerUser")), 0600)
+	e, _, code = run(t, append([]string{"sync", "--override-profile-settings"}, base...)...)
 	if code == 0 || e.Counts["conflict"] != 1 {
 		t.Fatal(e)
 	}
 	os.WriteFile(root+"/.aws/config", configBefore, 0600)
 	os.Chmod(root+"/.aws", 0500)
 	defer os.Chmod(root+"/.aws", 0700)
-	e, _, code = run(t, append([]string{"sync", "--region", "eu-west-1", "--timeout", "30ms"}, base...)...)
+	e, _, code = run(t, append([]string{"sync", "--override-profile-settings", "--region", "eu-west-1", "--timeout", "30ms"}, base...)...)
 	if code == 0 || e.Counts["failed"] != 1 {
 		t.Fatal(e)
 	}

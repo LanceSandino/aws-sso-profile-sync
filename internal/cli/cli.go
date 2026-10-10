@@ -37,10 +37,10 @@ func (s *stringsFlag) String() string     { return strings.Join(*s, ",") }
 func (s *stringsFlag) Set(v string) error { *s = append(*s, v); return nil }
 
 type Options struct {
-	Command, StartURL, Session, SSORegion, Region, Prefix, Output, Config, State, Format, Endpoint, TestRoot string
-	Roles                                                                                                    stringsFlag
-	AutoPrefix, DryRun, Open, Probe, SessionExplicit                                                         bool
-	Timeout                                                                                                  time.Duration
+	Command, StartURL, Session, SSORegion, Region, Prefix, Output, Config, State, Format, Endpoint, TestRoot, SettingsFile, Context string
+	Roles                                                                                                                           stringsFlag
+	AutoPrefix, DryRun, Open, Probe, SessionExplicit, OverrideProfileSettings, RegionFromSettings                                   bool
+	Timeout                                                                                                                         time.Duration
 }
 type Change struct {
 	Section string  `json:"section"`
@@ -56,6 +56,7 @@ type Envelope struct {
 	Assignments   []domain.Assignment          `json:"assignments"`
 	Counts        map[string]int               `json:"counts"`
 	Error         *domain.Error                `json:"error,omitempty"`
+	Warnings      []domain.Warning             `json:"warnings,omitempty"`
 	Explanation   string                       `json:"explanation,omitempty"`
 	Changes       map[string]map[string]string `json:"changes,omitempty"`
 	Diff          []Change                     `json:"diff,omitempty"`
@@ -88,9 +89,12 @@ func Parse(args []string, stderr io.Writer) (Options, error) {
 	f.Var(&o.Roles, "role", "selected role (repeatable)")
 	f.StringVar(&o.Prefix, "prefix", "", "custom prefix; identity suffix prevents collisions")
 	f.BoolVar(&o.AutoPrefix, "auto-prefix", true, "prefix from role name")
+	f.BoolVar(&o.OverrideProfileSettings, "override-profile-settings", false, "explicitly replace existing managed profile region and output")
 	f.StringVar(&o.Output, "output", "json", "AWS profile output format")
 	f.StringVar(&o.Config, "config-file", os.Getenv("AWS_CONFIG_FILE"), "shared config path")
 	f.StringVar(&o.State, "state-dir", "", "private tool token state directory")
+	f.StringVar(&o.SettingsFile, "settings-file", "", "optional nonsecret JSON settings file")
+	f.StringVar(&o.Context, "context", "", "named settings context; defaults file to ~/.aws-sso-profile-sync/settings.json")
 	f.StringVar(&o.Format, "format", "table", "table or json")
 	f.BoolVar(&o.DryRun, "dry-run", false, "strict read-only plan")
 	f.BoolVar(&o.Open, "open", true, "open verification URL during explicit login")
@@ -102,7 +106,9 @@ func Parse(args []string, stderr io.Writer) (Options, error) {
 	if err := f.Parse(args); err != nil {
 		return o, err
 	}
+	explicit := map[string]bool{}
 	f.Visit(func(v *flag.Flag) {
+		explicit[v.Name] = true
 		if v.Name == "sso-session-name" {
 			o.SessionExplicit = true
 		}
@@ -134,6 +140,9 @@ func Parse(args []string, stderr io.Writer) (Options, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return o, domain.Fail("config_invalid", "HOME is required")
+	}
+	if err := applySettings(&o, explicit, home); err != nil {
+		return o, err
 	}
 	if o.Config == "" {
 		o.Config = filepath.Join(home, ".aws", "config")
@@ -234,6 +243,9 @@ func Execute(ctx context.Context, o Options, stderr io.Writer) (Envelope, error)
 	if err != nil {
 		return out, err
 	}
+	if o.Command == "list" || o.Command == "doctor" {
+		out.Warnings = configstore.DuplicateProfiles(snapshot.Sections)
+	}
 	if o.Command == "list" || o.Command == "doctor" && !o.Probe {
 		names := []string{}
 		for n := range snapshot.Sections {
@@ -316,11 +328,15 @@ func Execute(ctx context.Context, o Options, stderr io.Writer) (Envelope, error)
 		return out, nil
 	}
 	region, source := ResolveRegion(o.Region, snapshot)
-	plan, err := planner.Build(snapshot, assignments, planner.Options{Session: session, Region: region, Output: o.Output, Prefix: o.Prefix, AutoPrefix: o.AutoPrefix, Roles: o.Roles})
+	if o.RegionFromSettings && source == "flag" {
+		source = "settings context"
+	}
+	plan, err := planner.Build(snapshot, assignments, planner.Options{Session: session, Region: region, Output: o.Output, Prefix: o.Prefix, AutoPrefix: o.AutoPrefix, Roles: o.Roles, OverrideProfileSettings: o.OverrideProfileSettings})
 	if err != nil {
 		return out, err
 	}
 	out.Results = plan.Results
+	out.Warnings = plan.Warnings
 	out.Explanation = plan.Explanation + " Profile region from " + source
 	out.Changes = plan.Sections
 	out.Diff = diff(snapshot, plan.Sections)
@@ -382,6 +398,12 @@ func emit(out Envelope, format string, stdout io.Writer) error {
 				before = display(*d.Before)
 			}
 			fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", display(d.Section), d.Key, before, display(d.After))
+		}
+	}
+	if len(out.Warnings) > 0 {
+		fmt.Fprintln(w, "WARNING\tPROFILES\tFIELD\tEXISTING\tREQUESTED\tIDENTITY")
+		for _, warning := range out.Warnings {
+			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n", display(warning.Code), display(strings.Join(warning.Profiles, ", ")), display(warning.Field), display(warning.Existing), display(warning.Requested), display(warning.IdentityKey))
 		}
 	}
 	if e := w.Flush(); e != nil {
