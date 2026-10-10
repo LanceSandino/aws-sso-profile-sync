@@ -17,14 +17,18 @@ Download your target's archive and `SHA256SUMS` from the [2.0.0 release](https:/
 
 ## Build the reviewed source
 
-At the exact reviewed source checkout:
+With Go 1.25 or newer, check out the release tag and install from that checkout:
 
 ```bash
+git clone --branch v2.0.0 --depth 1 https://github.com/LanceSandino/aws-sso-profile-sync.git
+cd aws-sso-profile-sync
 GOBIN="$(pwd)/dist/local-bin" go install .
 ./dist/local-bin/aws-sso-profile-sync --version
 ```
 
-This uses the root canonical Go installation entry point. `go install github.com/LanceSandino/aws-sso-profile-sync@latest` resolves remote source and will not install unpublished local changes.
+If you already have the exact reviewed source checkout, start with the `GOBIN` command. It uses the root Go installation entry point and installs only that checkout's source into `dist/local-bin`.
+
+The module retains its original path without a `/v2` suffix. Go's major-version rules therefore prevent `go install github.com/LanceSandino/aws-sso-profile-sync@v2.0.0`; use the tagged checkout or a release archive instead. An `@latest` install does not select this tagged release reliably.
 
 ## Build and verify release archives
 

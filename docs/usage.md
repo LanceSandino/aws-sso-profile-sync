@@ -14,7 +14,7 @@ GOBIN="$(pwd)/dist/local-bin" go install .
 ./dist/local-bin/aws-sso-profile-sync --help
 ```
 
-The examples below use `aws-sso-profile-sync` on PATH. Use the installed executable's full path if you have not added its directory to PATH. A source build installs the checkout you built; the public Homebrew tap installs released archives, and `go install ...@v2.0.0` selects this version explicitly.
+The examples below use `aws-sso-profile-sync` on PATH. Use the installed executable's full path if you have not added its directory to PATH. A source build installs the checkout you built; select the `v2.0.0` tag as shown in the installation guide. The public Homebrew tap installs released archives.
 
 ## Choose the session and files
 

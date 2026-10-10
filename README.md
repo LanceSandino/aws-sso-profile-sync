@@ -36,14 +36,16 @@ The public [Homebrew tap](https://github.com/LanceSandino/homebrew-tap) installs
 
 ### Go or release archive
 
-With Go 1.25 or newer:
+Download the matching archive and `SHA256SUMS` from the [2.0.0 release](https://github.com/LanceSandino/aws-sso-profile-sync/releases/tag/v2.0.0), or build the tagged source with Go 1.25 or newer:
 
 ```bash
-go install github.com/LanceSandino/aws-sso-profile-sync@v2.0.0
-aws-sso-profile-sync --version
+git clone --branch v2.0.0 --depth 1 https://github.com/LanceSandino/aws-sso-profile-sync.git
+cd aws-sso-profile-sync
+GOBIN="$(pwd)/dist/local-bin" go install .
+./dist/local-bin/aws-sso-profile-sync --version
 ```
 
-Add Go's binary directory to PATH if needed. Alternatively, download the matching archive and `SHA256SUMS` from the [2.0.0 release](https://github.com/LanceSandino/aws-sso-profile-sync/releases/tag/v2.0.0). See [installation and rollback](docs/install.md) for checksum verification, explicit installation prefixes, source builds and backups.
+Use that executable's full path or add its directory to PATH. The module retains its original path without a `/v2` suffix, so install this release from its checkout rather than using `go install ...@v2.0.0`. See [installation and rollback](docs/install.md) for checksum verification, explicit installation prefixes, source builds and backups.
 
 Supported targets are **Linux amd64/arm64 and macOS amd64/arm64**. Windows is unsupported. Each target has native build, test, archive installation and offline diagnostic validation.
 
