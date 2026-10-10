@@ -2,7 +2,7 @@
   "schema_version": 1,
   "version": "2.0.0",
   "status": "PASS",
-  "source_fingerprint": "sha256:01d97818240b99fd37b57366e396a400555e101ceb2ebf2c2f8e22ccee607c02",
+  "source_fingerprint": "sha256:f79eae5e9a48ab89335ecdedc3f655af984cb5057ec25e43cb611639a89a78be",
   "real_aws_acceptance": {
     "R01": "PASS",
     "R02": "PASS",
@@ -14,5 +14,5 @@
     "R08": "PASS",
     "R09": "PASS"
   },
-  "notes": "Fresh owner-authorized R01-R09 passed on final stable source 93a5475, version 2.0.0 and its release-flag binary. Independent AWS CLI full account/role discovery matched; generated identity, repeat sync, eight preservation/settings read-only plans, forced copied-token expiry with real refresh, two named sessions and two profile regions at one provider region, and private recovery evidence passed. Original work checkout/configuration/adjacent state were preserved; no IAM mutations or personal CLI cache import. Natural expiry, other tenants/partitions and other provider regions were not certified. Owner authorizes conditional merge, verified stable publication and public Homebrew validation."
+  "notes": "Fresh owner-authorized R01-R09 and eight preservation/settings cases passed on final patched source d295b1d, fingerprint f79eae5e9a48ab89335ecdedc3f655af984cb5057ec25e43cb611639a89a78be, version 2.0.0 and native Darwin ARM release-flag binary SHA256 5abda1933f049f009e0bba81891c859996dc35269627b41b2ae170dc9a2ab771. The binary exactly matches native CI run 38035737121. Independent AWS CLI full discovery, generated profile identity, repeat sync, preservation/overrides/aliases/settings, real refresh, two named sessions with two profile regions at one provider region, and private recovery evidence passed. The separate owned CLI token was refreshed through the official CLI after expiry; the secondary token expired between plan and sync, the write was refused, and isolation passed after explicit refresh. Failed attempts are preserved privately. Original work checkout/configuration/adjacent state were verified unchanged; no IAM mutations or personal token-cache import. Natural-expiry R07, other tenants/partitions and other provider regions were not certified. Owner authorizes green-check merge, verified stable publication and public Homebrew validation."
 }
