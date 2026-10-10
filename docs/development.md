@@ -42,6 +42,12 @@ Docker absence, container startup failure, seed failure or empty test selection 
 
 ## CI and evidence
 
-`.github/workflows/validate.yml` separates Linux/Intel-macOS non-Docker gates from the Linux Docker integration job. It declares read-only repository permission, disables persisted checkout credentials, uses disposable paths and no AWS secrets, rejects skipped tests, and requires all F01–F10 cases. Native candidate installation smoke runs on each target runner. The action references pin the verified official v7 tags to immutable commit SHAs; the Intel label `macos-15-intel` is listed in the [official runner image inventory](https://github.com/actions/runner-images/blob/main/README.md). Workflow declaration does not mean a hosted workflow has run; record actual run evidence after an authorized push.
+`.github/workflows/validate.yml` runs separate native Linux amd64/arm64 and macOS Intel/ARM jobs, a minimum Go 1.25 compile job, and Linux Docker integration. It uses read-only repository permissions, disables persisted checkout credentials, uses disposable paths and no AWS secrets, rejects skipped tests, and requires all F01–F10 cases. Native installation smoke runs on each target. Official actions are pinned to immutable revisions; `macos-15-intel` is listed in the [official runner image inventory](https://github.com/actions/runner-images/blob/main/README.md). The published 2.0.0 release passed all six hosted validation jobs; future changes must pass their own runs.
 
-Real AWS acceptance is recorded separately in `.github/release-acceptance.json`. Emulator results do not satisfy that gate. Test cache/state and raw logs do not belong in public source or release archives; see [manual acceptance](manual-aws-acceptance.md).
+Real AWS acceptance for published 2.0.0 is recorded separately in the [tagged acceptance record](https://github.com/LanceSandino/aws-sso-profile-sync/blob/v2.0.0/.github/release-acceptance.json). Emulator results do not satisfy that gate. Test cache/state and raw logs do not belong in public source or release archives; see [manual acceptance](manual-aws-acceptance.md).
+
+## Repository layout
+
+`main.go` supports repository-path `go install`; `cmd/aws-sso-profile-sync/main.go` is the release build entry. Both are thin signal-handling wrappers around `internal/cli.Run`. Neither contains a separate implementation.
+
+Package tests live beside `internal/` code. `tests/compatibility/` preserves the original tool's behavioral assertions and migration regressions, with test-only adapters that call the current planner, configstore and CLI. These files are compiled by `go test ./...` and are excluded from shipped executables. `tests/distribution/` verifies release, archive, installer and Homebrew tooling; `tests/integration/` owns synthetic Floci fixtures. There is no retired production implementation in the root.

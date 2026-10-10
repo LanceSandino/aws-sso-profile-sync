@@ -1,5 +1,5 @@
 // Compatibility adapters preserve existing behavioral assertions while using modular code.
-package main
+package compatibility
 
 import (
 	"context"
