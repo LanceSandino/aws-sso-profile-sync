@@ -68,7 +68,9 @@ jobs:
           set -euo pipefail
           tap_root=$(brew --repository LanceSandino/tap)
           mkdir -p "$tap_root/Formula"
-          cp Formula/aws-sso-profile-sync.rb "$tap_root/Formula/"
+          if ! [ Formula/aws-sso-profile-sync.rb -ef "$tap_root/Formula/aws-sso-profile-sync.rb" ]; then
+            cp Formula/aws-sso-profile-sync.rb "$tap_root/Formula/aws-sso-profile-sync.rb"
+          fi
           if brew command trust >/dev/null 2>&1; then
             brew trust --formula LanceSandino/tap/aws-sso-profile-sync
           fi

@@ -65,6 +65,51 @@ class HomebrewWorkflow(unittest.TestCase):
         with self.assertRaises(ValueError):
             homebrew_workflow_policy(before + "".join("      - " + step for step in steps))
 
+    def test_style_audit_copy_handles_samefile_and_separate_tap(self):
+        workflow = (ROOT / "packaging/homebrew/tap/.github/workflows/candidate.yml").read_text()
+        step = workflow.split("      - name: Style and audit the exact generated public formula\n", 1)[1].split("      - name:", 1)[0]
+        script = "\n".join(line[10:] for line in step.split("        run: |\n", 1)[1].splitlines())
+        for layout in ("same", "symlink", "separate"):
+            with self.subTest(layout=layout), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                workspace = root / "workspace"
+                (workspace / "Formula").mkdir(parents=True)
+                source = workspace / "Formula/aws-sso-profile-sync.rb"
+                source.write_bytes(b"synthetic formula\n")
+                os.utime(source, (1600000000, 1600000000))
+                if layout == "same":
+                    tap = workspace
+                elif layout == "symlink":
+                    tap = root / "tap-link"
+                    tap.symlink_to(workspace, target_is_directory=True)
+                else:
+                    tap = root / "tap"
+                    tap.mkdir()
+                bin_dir = root / "bin"
+                bin_dir.mkdir()
+                brew = bin_dir / "brew"
+                brew.write_text('#!/bin/bash\nset -euo pipefail\ncase "$1" in\n'
+                                '--repository) printf "%s\\n" "$SYNTHETIC_TAP_ROOT" ;;\n'
+                                'command) exit 1 ;;\n'
+                                'style|audit) printf "%s\\n" "$1" >> "$SYNTHETIC_BREW_LOG" ;;\n'
+                                '*) exit 99 ;;\nesac\n')
+                brew.chmod(0o755)
+                syntax = subprocess.run(["/bin/bash", "-n", str(brew)], capture_output=True, text=True, timeout=5)
+                self.assertEqual(syntax.returncode, 0, syntax.stderr)
+                log = root / "brew.log"
+                env = {"PATH": str(bin_dir) + ":/usr/bin:/bin", "HOME": str(root),
+                       "SYNTHETIC_TAP_ROOT": str(tap), "SYNTHETIC_BREW_LOG": str(log)}
+                syntax = subprocess.run(["/bin/bash", "-n"], input=script, env=env,
+                                        capture_output=True, text=True, timeout=5)
+                self.assertEqual(syntax.returncode, 0, syntax.stderr)
+                for _ in range(2):
+                    result = subprocess.run(["/bin/bash", "-c", script], cwd=workspace, env=env,
+                                            capture_output=True, text=True, timeout=5)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual((tap / "Formula/aws-sso-profile-sync.rb").read_bytes(), source.read_bytes())
+                self.assertEqual(source.stat().st_mtime_ns, 1600000000000000000)
+                self.assertEqual(log.read_text().splitlines(), ["style", "audit", "style", "audit"])
+
     def test_scoped_global_git_config_prevents_duplicate_authorization(self):
         with tempfile.TemporaryDirectory() as directory:
             home = Path(directory)
