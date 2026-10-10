@@ -4,7 +4,7 @@ package main
 
 import (
 	"context"
-	"github.com/LanceSandino/aws-sso-profile-sync/internal/cli"
+	"github.com/LanceSandino/aws-sso-profile-sync/v2/internal/cli"
 	"os"
 	"os/signal"
 	"syscall"

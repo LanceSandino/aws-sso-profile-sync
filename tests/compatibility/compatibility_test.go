@@ -1,13 +1,13 @@
 // Compatibility adapters preserve existing behavioral assertions while using modular code.
-package main
+package compatibility
 
 import (
 	"context"
 	"fmt"
-	"github.com/LanceSandino/aws-sso-profile-sync/internal/cli"
-	"github.com/LanceSandino/aws-sso-profile-sync/internal/configstore"
-	"github.com/LanceSandino/aws-sso-profile-sync/internal/domain"
-	"github.com/LanceSandino/aws-sso-profile-sync/internal/planner"
+	"github.com/LanceSandino/aws-sso-profile-sync/v2/internal/cli"
+	"github.com/LanceSandino/aws-sso-profile-sync/v2/internal/configstore"
+	"github.com/LanceSandino/aws-sso-profile-sync/v2/internal/domain"
+	"github.com/LanceSandino/aws-sso-profile-sync/v2/internal/planner"
 	"os"
 	"strings"
 	"testing"

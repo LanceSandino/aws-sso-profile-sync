@@ -12,7 +12,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/LanceSandino/aws-sso-profile-sync/internal/domain"
+	"github.com/LanceSandino/aws-sso-profile-sync/v2/internal/domain"
 )
 
 // Context contains only optional command defaults. Pointers preserve explicit false and empty prefixes.

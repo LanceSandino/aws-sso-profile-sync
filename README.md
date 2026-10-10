@@ -6,7 +6,7 @@ AWS SSO Profile Sync is a Go CLI that turns your AWS IAM Identity Center account
 
 Managing SSO profiles across many AWS accounts meant repetitive configuration work and profiles that drifted as access changed. I couldn't find a tool that fit my workflow, so I built the original flags-only version. I used it daily across more than 50 AWS accounts at multiple companies.
 
-Version **2.0.0** replaces that original implementation with explicit authentication, deterministic planning and guarded configuration updates. The original tool's field use is separate from this rewrite's validation. Automated checks use synthetic AWS data; [real IAM Identity Center and AWS CLI acceptance](.github/release-acceptance.json) is tracked separately for the exact release source.
+Version **2.0.0** replaced that original implementation with explicit authentication, deterministic planning and guarded configuration updates. **2.0.1** fixes Go module installation and clarifies installation and maintenance documentation. The original tool's field use is separate from this rewrite's validation. Releases have native validation on all four supported targets, synthetic Floci integration, and [source-bound real IAM Identity Center and AWS CLI acceptance](https://github.com/LanceSandino/aws-sso-profile-sync/blob/v2.0.1/.github/release-acceptance.json). Real acceptance covers two named sessions and two profile regions at one Identity Center region; it does not certify every AWS environment.
 
 ## What it does
 
@@ -34,24 +34,26 @@ aws-sso-profile-sync --version
 
 The public [Homebrew tap](https://github.com/LanceSandino/homebrew-tap) installs the matching release archive and verifies its checksum. Upgrade with `brew upgrade aws-sso-profile-sync`.
 
-### Go or release archive
+### Go install
 
-Download the matching archive and `SHA256SUMS` from the [2.0.0 release](https://github.com/LanceSandino/aws-sso-profile-sync/releases/tag/v2.0.0), or build the tagged source with Go 1.25 or newer:
+With Go 1.25 or newer:
 
 ```bash
-git clone --branch v2.0.0 --depth 1 https://github.com/LanceSandino/aws-sso-profile-sync.git
-cd aws-sso-profile-sync
-GOBIN="$(pwd)/dist/local-bin" go install .
-./dist/local-bin/aws-sso-profile-sync --version
+go install github.com/LanceSandino/aws-sso-profile-sync/v2@latest
+"$(go env GOPATH)/bin/aws-sso-profile-sync" --version
 ```
 
-Use that executable's full path or add its directory to PATH. The module retains its original path without a `/v2` suffix, so install this release from its checkout rather than using `go install ...@v2.0.0`. See [installation and rollback](docs/install.md) for checksum verification, explicit installation prefixes, source builds and backups.
+If you set `GOBIN`, use that directory instead. Add the install directory to PATH or use the executable's full path. To pin this release, replace `@latest` with `@v2.0.1`. The `/v2` suffix is Go's standard module path for major version 2; the binary is still named `aws-sso-profile-sync`. [Tagged-checkout installation](docs/install.md#build-the-tagged-source) also supports `go install .`.
+
+### Release archive (browser or curl)
+
+Download your platform's archive and `SHA256SUMS` from the [2.0.1 release](https://github.com/LanceSandino/aws-sso-profile-sync/releases/tag/v2.0.1). Verify its checksum, then use the included installer with an explicit prefix. The [curl walkthrough](docs/install.md#download-with-curl) selects the native target, downloads and verifies the archive, and installs it without Go or Homebrew. It requires Bash, Python 3, curl, tar and a SHA-256 checker.
 
 Supported targets are **Linux amd64/arm64 and macOS amd64/arm64**. Windows is unsupported. Each target has native build, test, archive installation and offline diagnostic validation.
 
 ## Walkthrough
 
-Start with the [complete usage guide](docs/usage.md), which covers setup, authentication, discovery, role selection, profile naming, previews, synchronization and recovery. For later authorized real use, complete the [manual AWS acceptance procedure](docs/manual-aws-acceptance.md) and back up the chosen config and adjacent ownership metadata first.
+Start with the [complete usage guide](docs/usage.md), which covers setup, authentication, discovery, role selection, profile naming, previews, synchronization and recovery. Back up your chosen config and adjacent ownership metadata before the first sync. The [manual acceptance procedure](docs/manual-aws-acceptance.md) is for maintainers validating a new release or operators checking another environment.
 
 The typical sequence is **login → discover → plan → review → sync**. This Bash example uses a placeholder tenant URL; replace it only for an authorized session. Choose the assigned role reported by discovery rather than assuming `ReadOnly` exists:
 
@@ -136,7 +138,7 @@ Read [architecture and public design decisions](docs/architecture.md) for the da
 
 [Development instructions](docs/development.md) describe isolated build, vet, race, coverage and fuzz checks, plus real Floci/Testcontainers integration with synthetic accounts, roles, permission sets and device authorization. Development tests use disposable HOME/config/state paths and never access real AWS endpoints, actual credentials or personal AWS configuration. Go statement coverage is enforced at **85% or higher**.
 
-Native CI targets all four supported platforms and runs a separate Floci integration job. A workflow declaration is not proof that hosted validation has run, and emulator results do not establish real AWS production compatibility. The [acceptance record](.github/release-acceptance.json) reports real acceptance for its recorded version and source fingerprint.
+Native CI targets all four supported platforms and runs a separate Floci integration job. See the [release acceptance record](https://github.com/LanceSandino/aws-sso-profile-sync/blob/v2.0.1/.github/release-acceptance.json) for source-bound real AWS results and the observed scope. Development and CI use synthetic data only.
 
 See the [changelog](CHANGELOG.md) for user-visible changes and [release instructions](docs/releasing.md) for versioning, acceptance and owner-controlled publication.
 

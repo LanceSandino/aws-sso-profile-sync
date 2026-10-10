@@ -3,6 +3,21 @@
 This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Release notes describe user-visible changes, newest first.
 
+## [2.0.1] — 2026-10-10
+
+### Fixed
+
+- Go installation now follows Go's version-2 module convention: `go install github.com/LanceSandino/aws-sso-profile-sync/v2@latest` selects a supported release. Pinned `@v2.0.1` installs also work.
+- Installation and maintainer documentation no longer describe the public release or Homebrew formula as pending or unavailable.
+
+### Improved
+
+- Three clear installation methods: Homebrew, Go install, and a checksummed release archive with browser or curl download instructions.
+- Compatibility tests are grouped under `tests/compatibility/`, with all original assertions preserved and both thin command entry points documented.
+- Homebrew documentation links to the shared tap catalog and separates users' installation steps from formula maintenance.
+
+The CLI commands, authentication, profile names and configuration behavior are unchanged. Go source import/install paths now include `/v2`; previously installed binaries and Homebrew users do not need to change their commands.
+
 ## [2.0.0] — 2026-10-10
 
 ### Added

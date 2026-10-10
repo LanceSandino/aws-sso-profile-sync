@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/LanceSandino/aws-sso-profile-sync/internal/domain"
+	"github.com/LanceSandino/aws-sso-profile-sync/v2/internal/domain"
 )
 
 // Token is deliberately stored separately from AWS CLI cache files. CLI interoperability requires manual AWS acceptance.

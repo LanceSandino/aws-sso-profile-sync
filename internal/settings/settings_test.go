@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/LanceSandino/aws-sso-profile-sync/internal/domain"
+	"github.com/LanceSandino/aws-sso-profile-sync/v2/internal/domain"
 )
 
 func settingsFile(t *testing.T, data string) string {

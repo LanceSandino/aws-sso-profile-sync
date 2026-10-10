@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "version": "2.0.0",
+  "version": "2.0.1",
   "status": "PASS",
-  "source_fingerprint": "sha256:f79eae5e9a48ab89335ecdedc3f655af984cb5057ec25e43cb611639a89a78be",
+  "source_fingerprint": "sha256:16f11e125e12156c4b186b137b3299f821fa8c5bcae9824da223f8f4633891c4",
   "real_aws_acceptance": {
     "R01": "PASS",
     "R02": "PASS",
@@ -14,5 +14,5 @@
     "R08": "PASS",
     "R09": "PASS"
   },
-  "notes": "Fresh owner-authorized R01-R09 and eight preservation/settings cases passed on final patched source d295b1d, fingerprint f79eae5e9a48ab89335ecdedc3f655af984cb5057ec25e43cb611639a89a78be, version 2.0.0 and native Darwin ARM release-flag binary SHA256 5abda1933f049f009e0bba81891c859996dc35269627b41b2ae170dc9a2ab771. The binary exactly matches native CI run 38035737121. Independent AWS CLI full discovery, generated profile identity, repeat sync, preservation/overrides/aliases/settings, real refresh, two named sessions with two profile regions at one provider region, and private recovery evidence passed. The separate owned CLI token was refreshed through the official CLI after expiry; the secondary token expired between plan and sync, the write was refused, and isolation passed after explicit refresh. Failed attempts are preserved privately. Original work checkout/configuration/adjacent state were verified unchanged; no IAM mutations or personal token-cache import. Natural-expiry R07, other tenants/partitions and other provider regions were not certified. Owner authorizes green-check merge, verified stable publication and public Homebrew validation."
+  "notes": "Fresh 2026-10-10 Darwin ARM acceptance passed all nine cases and eight preservation/settings checks on the shipping source. Valid cached sessions were reused; independent AWS CLI discovery and generated-profile identity matched. Original configuration remained unchanged. Refresh used a copied forced-expiry timestamp, not natural expiry. Session isolation covered two named sessions and two profile regions within one SSO provider region; other environments remain outside this observed scope."
 }

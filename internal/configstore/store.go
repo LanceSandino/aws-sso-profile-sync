@@ -17,7 +17,7 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/LanceSandino/aws-sso-profile-sync/internal/domain"
+	"github.com/LanceSandino/aws-sso-profile-sync/v2/internal/domain"
 )
 
 type Snapshot struct {

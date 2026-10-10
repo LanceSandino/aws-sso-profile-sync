@@ -1,4 +1,4 @@
-module github.com/LanceSandino/aws-sso-profile-sync
+module github.com/LanceSandino/aws-sso-profile-sync/v2
 
 go 1.25.0
 
