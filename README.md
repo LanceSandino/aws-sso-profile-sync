@@ -1,216 +1,114 @@
 # AWS SSO Profile Sync
 
-A Go CLI tool that automatically configures AWS CLI profiles for all AWS accounts accessible through AWS Single Sign-On (SSO). This tool eliminates the manual process of setting up individual AWS CLI profiles for each account in your organization.
+AWS SSO Profile Sync is a Go CLI that turns your AWS IAM Identity Center account and role assignments into named AWS shared-config profiles. It helps keep profiles current as access changes, with a reviewable plan before writing configuration.
 
-## 🚀 Features
+## Why I built it
 
-- **Automatic Profile Discovery**: Automatically discovers all AWS accounts accessible via your AWS SSO
-- **Bulk Profile Creation**: Creates AWS CLI profiles for all discovered accounts with a single command
-- **Smart Token Management**: Validates existing SSO tokens and handles automatic renewal
-- **Configuration Management**: Automatically manages SSO session configuration in `~/.aws/config`
-- **Role-based Filtering**: Configurable to work with specific IAM roles (PowerUser, Administrator, ReadOnly)
-- **Duplicate Protection**: Skips profiles that already exist to avoid conflicts
-- **Colorized Output**: Beautiful, colored terminal output for better user experience
-- **Interactive Login**: Seamlessly handles AWS SSO browser-based authentication
+Managing SSO profiles across many AWS accounts meant repetitive configuration work and profiles that drifted as access changed. I couldn't find a tool that fit my workflow, so I built the original flags-only version. I used it daily across more than 50 AWS accounts at multiple companies.
 
-## 📋 Prerequisites
+This **2.0.0-rc.1** candidate replaces that original implementation with explicit authentication, deterministic planning and guarded configuration updates. The original tool's field use is separate from this rewrite's validation: the candidate has been tested locally with synthetic AWS data, while **real AWS IAM Identity Center and AWS CLI acceptance remains pending**. No release has been published.
 
-- Go 1.19+ installed on your system
-- AWS SSO configured for your organization and an account with access
+## What it does
 
-This tool uses the AWS SDK for Go v2 and does not require the AWS CLI to be installed. It writes profiles directly to your AWS config file (`~/.aws/config`).
+- Discovers the AWS accounts and roles assigned to your signed-in user, including paginated results.
+- Selects one or several roles and creates distinct profile names from the account label, account ID and a stable identity suffix.
+- Shows proposed changes and before/after values in a table or versioned JSON; JSON also includes configuration hashes.
+- Preserves unrelated profiles, settings and comments. Existing unmanaged profiles are never silently adopted.
+- Reports removed assignments as stale and retains their profiles for review.
+- Refuses malformed configuration, conflicting session bindings, externally edited managed profiles and concurrent changes.
+- Uses bounded requests, advisory locking, atomic file replacement and recoverable ownership metadata; unchanged syncs preserve file bytes.
 
-## 🛠️ Installation
+It is a CLI, with no GUI, daemon, cloud provisioning or AWS CLI installation dependency. AWS CLI token interoperability still requires real acceptance testing.
 
-Build from source:
+## Install the candidate
 
-```bash
-git clone https://github.com/LanceSandino/aws-sso-profile-sync.git
-cd aws-sso-profile-sync
-go build -o aws-sso-profile-sync main.go
-```
-
-Or install with `go install`:
+Build the reviewed checkout with Go 1.25 or newer; local validation and the primary CI jobs use Go 1.27.1:
 
 ```bash
-go install github.com/LanceSandino/aws-sso-profile-sync@latest
+GOBIN="$(pwd)/dist/local-bin" go install .
+./dist/local-bin/aws-sso-profile-sync --version
 ```
 
-## ⚙️ Configuration (flags)
+Add that installation directory to your PATH if you want to use the shorter command below. This installs the current checkout. Remote `go install ...@latest` resolves published source and does not install unpublished candidate changes.
 
-This tool is configured via CLI flags rather than compile-time constants. Important flags implemented in the code include:
+Candidate targets are **Linux amd64/arm64 and macOS amd64/arm64**. Windows is unsupported. Building an archive for a target is separate from executing and verifying it on that target.
 
-- `-sso-start-url` (required): the SSO start URL for your tenant (e.g. `https://mycompany.awsapps.com/start/`).
-- `-sso-session-name` (default: `default`): name for the `sso-session` block in your AWS config.
-- `-sso-region` (default: `us-east-1`): AWS SSO region.
-- `-role` (repeatable): SSO role names to create profiles for (can be provided multiple times). If omitted, the tool auto-selects the role only when exactly one distinct role is available across your accounts; otherwise it lists the available roles and asks you to re-run with `-role`.
-- `-region`: AWS region written into generated profiles. If omitted, the tool uses `AWS_REGION`, then `AWS_DEFAULT_REGION`, then the region in the existing `[default]` profile, then `us-east-2`.
-- `-prefix`: explicit profile prefix (overrides auto-generation).
-- `-auto-prefix` (default: true): auto-generate profile prefix from role name.
-- `-output` (default: `json`): value to write into the `output` key for each profile (e.g., `json` or `text`).
-- `-config-file`: path to the AWS config file (defaults to SDK default, typically `~/.aws/config`).
+See [installation and rollback](docs/install.md) for archives, checksums, explicit installation prefixes and backups. Homebrew installation is planned after the owner publishes matching release assets and a reviewed formula; see [release and Homebrew instructions](docs/releasing.md).
 
-Use `-dry-run` to preview changes without writing files, and `-open` (default true) to automatically open the device verification URL in your browser during login.
+## Walkthrough
 
-## 🚀 Usage
+Start with the [complete usage guide](docs/usage.md), which covers setup, authentication, discovery, role selection, profile naming, previews, synchronization and recovery. For later authorized real use, complete the [manual AWS acceptance procedure](docs/manual-aws-acceptance.md) and back up the chosen config and adjacent ownership metadata first.
 
-### Basic Usage
-
-1. **Configure the tool** with your SSO settings (see Configuration section above)
-2. **Run the tool**:
-   ```bash
-   ./aws-sso-profile-sync
-   ```
-
-### What the Tool Does
-
-1. **Checks SSO Configuration**: Verifies that the SSO session is configured in `~/.aws/config`
-2. **Validates Tokens**: Checks if you have a valid SSO token
-3. **Interactive Login**: If needed, prompts you to authenticate via browser
-4. **Discovers Accounts**: Fetches all AWS accounts accessible through SSO
-5. **Creates Profiles**: Generates AWS CLI profiles for each account with the specified role
-6. **Reports Results**: Shows summary of profiles created and skipped
-
-### Example Output
-
-```
-========== AWS SSO Profile Setup ==========
-✅ Added SSO session config block for [my-sso-name] to /home/user/.aws/config
-
-🔑 Found existing SSO token at: /home/user/.aws/sso/cache/abc123.json (🌐 ssoUrl: https://your-tenant.awsapps.com/start/, 📍 ssoRegion: us-east-1)
-✅ Existing token is valid, continuing...
-
-🔎 Found 5 account(s) with role AWSPowerUserAccess
-
-➕ Adding profile: PowerUser_ProductionAccount (Account: Production, AccountId: 123456789012, Role: AWSPowerUserAccess)
-➕ Adding profile: PowerUser_StagingAccount (Account: Staging, AccountId: 123456789013, Role: AWSPowerUserAccess)
-➖ Skipping profile: PowerUser_DevAccount (already exists)
-➕ Adding profile: PowerUser_TestingAccount (Account: Testing, AccountId: 123456789015, Role: AWSPowerUserAccess)
-
-📦 Summary: 3 new profile(s), 1 already configured.
-
-🎉 AWS SSO login and profile configuration complete!
-```
-
-### Using Generated Profiles
-
-After running the tool, you can use the generated profiles with the AWS CLI:
+The typical sequence is **login → discover → plan → review → sync**. This Bash example uses a placeholder tenant URL; replace it only for an authorized session. Choose the assigned role reported by discovery rather than assuming `ReadOnly` exists:
 
 ```bash
-# List all profiles
-aws configure list-profiles
+session_flags=(
+  --sso-start-url https://example.invalid/start
+  --sso-session-name work
+  --sso-region us-east-1
+  --config-file "$HOME/.aws/config"
+  --state-dir "$HOME/.aws-sso-profile-sync"
+)
 
-# Use a specific profile
-aws s3 ls --profile PowerUser_ProductionAccount
+aws-sso-profile-sync login "${session_flags[@]}" --open=false
+aws-sso-profile-sync discover "${session_flags[@]}"
+aws-sso-profile-sync plan "${session_flags[@]}" --role ReadOnly --region us-east-2
 
-# Set default profile
-export AWS_PROFILE=PowerUser_ProductionAccount
-aws sts get-caller-identity
+# After reviewing the plan, explicitly apply it:
+aws-sso-profile-sync sync "${session_flags[@]}" --role ReadOnly --region us-east-2
+aws-sso-profile-sync list --config-file "$HOME/.aws/config"
+aws-sso-profile-sync doctor --config-file "$HOME/.aws/config"
 ```
 
-## 🗂️ Generated Profile Structure
+`login` performs device authorization. `--open=false` prints the verification URL without opening a browser. One available distinct role is selected with an explanation; multiple available roles require an explicit choice. Repeat `--role` to select more than one.
 
-Each generated profile will have the following configuration in `~/.aws/config`:
+| Command | Purpose |
+| --- | --- |
+| `login` | Explicit device authorization and private tool-owned token caching |
+| `discover` | Read-only account and role discovery using an existing valid login |
+| `plan` | Read-only deterministic configuration plan |
+| `sync` | Discovery, planning and a verified configuration transaction |
+| `list` | Offline profile and ownership information |
+| `doctor` | Offline configuration diagnostics; `--probe` explicitly adds network discovery |
 
-```ini
-[profile PowerUser_ProductionAccount]
-sso_session = my-sso-name
-sso_account_id = 123456789012
-sso_role_name = AWSPowerUserAccess
-region = us-east-2
-output = json
-```
+`plan`, `discover`, `list`, offline `doctor` and `sync --dry-run` never start login, open a browser or write token caches. Missing or expired authentication returns `login_required`; run `login` explicitly. Re-login can recover a revoked token or invalid refresh grant. Malformed, insecure or mismatched caches require inspection instead of silent replacement.
 
-## 🔧 Troubleshooting
+Use `--format json` for CLI output; `--output` controls the AWS profile's output setting. `--prefix` and `--auto-prefix` control the readable portion of profile names. Flags follow the command. Run `aws-sso-profile-sync --help` for all flags and defaults, and see the [usage guide](docs/usage.md) for region precedence and detailed examples.
 
-### Common Issues
+The original flags-only invocation still maps to `sync`, and single-dash flag spellings work. It now requires a separately completed login. Profile names have changed; old manually configured profiles stay unmanaged and preserved. There is no automatic adoption or deletion operation.
 
-#### "No such file or directory" Error
-```
-❌ Error adding SSO session config: open /home/user/.aws/config: no such file or directory
-```
-**Solution**: Create the AWS config directory:
-```bash
-mkdir -p ~/.aws
-touch ~/.aws/config
-```
+## Configuration and recovery
 
-#### Invalid SSO Token
-```
-⚠️ Existing token is invalid or expired.
-```
-**Solution**: The tool will automatically prompt you to re-authenticate via browser.
+Tokens are stored under `<state-dir>/auth`, bound to the named session, start URL, SSO region and endpoint, with owner-only permissions. The tool does not select or import AWS CLI token caches by timestamp.
 
-#### AWS CLI Not Found
-```
-exec: "aws": executable file not found in $PATH
-```
-**Solution**: Install AWS CLI v2:
-- **macOS**: `brew install awscli`
-- **Linux**: Follow [AWS CLI installation guide](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
-- **Windows**: Download installer from AWS
+For a config at `CONFIG`, ownership and recovery files are adjacent: `CONFIG.aws-sso-sync.json`, `CONFIG.aws-sso-sync.intent` and `CONFIG.aws-sso-sync.lock`. Keep these with configuration backups. Read-only commands do not create or reconcile them; a later explicit sync reconciles a recognized interrupted transaction. Arbitrary symlink paths are refused, with standard macOS system aliases allowed.
 
-#### SSO Authentication Issues
-**Solution**: Ensure your SSO URL and region are correct in the configuration constants.
+Failures return a nonzero exit code. A write error can mean that configuration was committed while recovery intent remains. Inspect the files and run offline `doctor` before retrying; do not assume every error means the original file is unchanged. The [usage guide](docs/usage.md) and [recovery instructions](docs/install.md#configuration-recovery) explain the next steps.
 
-### Debug Mode
+## Architecture and design decisions
 
-For troubleshooting, you can examine the generated AWS configuration:
+The code uses Go-native packages with explicit boundaries:
 
-```bash
-# View your AWS config
-cat ~/.aws/config
+| Package | Responsibility |
+| --- | --- |
+| `internal/cli` | Commands, flags, output and coordination |
+| `internal/domain` | Shared session, assignment, profile and error contracts |
+| `internal/auth` | Explicit login, token validation, refresh and private caching |
+| `internal/awsclient` | SDK construction and isolated emulator endpoint policy |
+| `internal/discovery` | Account and role enumeration with bounded concurrency |
+| `internal/planner` | Pure naming, role selection, ownership checks and change planning |
+| `internal/configstore` | Strict parsing, exact previews and guarded transactions |
 
-# List all profiles
-aws configure list-profiles
+Authentication is explicit so a preview cannot unexpectedly sign in or change a cache. Managed profiles have stable identities so label changes do not create replacement profiles. Ownership checks protect existing configuration, and stale profiles are retained so lost access does not trigger deletion. Durable recovery intent connects configuration writes with ownership metadata across interruptions.
 
-# Test a specific profile
-aws sts get-caller-identity --profile PowerUser_YourAccount
-```
+Read [architecture and public design decisions](docs/architecture.md) for the data flow, storage model and tradeoffs.
 
-## 🏗️ Architecture
+## Testing and contributing
 
-The tool consists of several key components:
+[Development instructions](docs/development.md) describe isolated build, vet, race, coverage and fuzz checks, plus real Floci/Testcontainers integration with synthetic accounts, roles, permission sets and device authorization. Development tests use disposable HOME/config/state paths and never access real AWS endpoints, actual credentials or personal AWS configuration. Go statement coverage is enforced at **85% or higher**.
 
-- **Token Management**: Handles SSO token discovery, validation, and renewal
-- **Account Discovery**: Uses AWS SSO APIs to fetch accessible accounts and roles
-- **Profile Generation**: Creates AWS CLI profiles using the `aws configure` command
-- **Configuration Management**: Manages SSO session configuration in AWS config files
- - **Profile Generation**: Writes AWS CLI profile sections directly to the AWS config file using the `gopkg.in/ini.v1` library
- - **Configuration Management**: Manages SSO session configuration in AWS config files (direct INI edits)
+Native CI targets all four candidate platforms and runs a separate Floci integration job. A workflow declaration is not proof that hosted validation has run, and emulator results do not establish real AWS production compatibility. Real acceptance is recorded separately and remains pending.
 
-## 🤝 Contributing
+See the [changelog](CHANGELOG.md) for user-visible changes and [release instructions](docs/releasing.md) for versioning, acceptance and owner-controlled publication.
 
-Contributions are welcome! Here are some ways you can help:
-
-1. **Report Issues**: Found a bug? Please open an issue with details
-2. **Feature Requests**: Have an idea? Open an issue to discuss it
-3. **Code Contributions**: 
-   - Fork the repository
-   - Create a feature branch (`git checkout -b feature/amazing-feature`)
-   - Commit your changes (`git commit -m 'Add some amazing feature'`)
-   - Push to the branch (`git push origin feature/amazing-feature`)
-   - Open a Pull Request
-
-### Development Setup
-
-```bash
-git clone https://github.com/LanceSandino/aws-sso-profile-sync.git
-cd aws-sso-profile-sync
-go mod download
-go build .
-```
-
-## 📝 License
-
-This project is open source. Please check the repository for license details.
-
-## 🙏 Acknowledgments
-
-- Built with the [AWS SDK for Go v2](https://github.com/aws/aws-sdk-go-v2)
-- Uses [fatih/color](https://github.com/fatih/color) for beautiful terminal output
- - Uses [gopkg.in/ini.v1](https://gopkg.in/ini.v1) to read and write `~/.aws/config` safely
-
----
-
-**Note**: This tool modifies your AWS CLI configuration. Always backup your `~/.aws/config` file before running the tool for the first time.
+Licensed under [Apache-2.0](LICENSE). See [third-party notices](THIRD_PARTY_NOTICES.md).
