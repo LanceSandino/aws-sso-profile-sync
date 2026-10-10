@@ -111,7 +111,14 @@ func startFloci(t *testing.T, data, principal string) (*ownedContainer, string) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	return c, "http://" + net.JoinHostPort("127.0.0.1", port.Port())
+	endpoint := "http://" + net.JoinHostPort("127.0.0.1", port.Port())
+	// A listening TCP port does not prove the Java service can answer HTTP.
+	// Probe the guarded local API within this same startup budget, including
+	// the persisted fixture restart, before issuing fixture mutations.
+	if _, err := waitForSSOReady(ctx, ssoadmin.NewFromConfig(localConfig(endpoint))); err != nil {
+		t.Fatalf("F01 Floci API readiness failed: %v", err)
+	}
+	return c, endpoint
 }
 
 func seedFixture(t *testing.T) fixture {
