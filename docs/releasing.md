@@ -1,10 +1,12 @@
 # Preparing an approved release
 
-`2.0.0` is the first semantic release of this rewrite. Local emulator validation is separate from the source-bound real AWS IAM Identity Center and AWS CLI acceptance record. The release workflow starts only by manual dispatch on the default `main` branch. It never automatically publishes a release.
+Stable [2.0.1](https://github.com/LanceSandino/aws-sso-profile-sync/releases/tag/v2.0.1) is published, and its public Homebrew formula is available. Native macOS/Linux Intel/ARM checks, Floci integration, real IAM Identity Center/AWS CLI acceptance, and actual public Homebrew installation passed for that release. Its [acceptance record](https://github.com/LanceSandino/aws-sso-profile-sync/blob/v2.0.1/.github/release-acceptance.json) remains bound to the immutable tag.
+
+The following procedure applies to **future releases**. Local emulator validation remains separate from source-bound real AWS acceptance. The release workflow starts only by manual dispatch on the default `main` branch and never automatically publishes a release. Documentation maintenance on `main` does not replace already-published assets or refresh an older acceptance fingerprint.
 
 ## Version and validation
 
-`VERSION` is the single SemVer source. A Git tag uses the same value prefixed with `v`, for example `v2.0.0`. For a later version, update `VERSION` and `CHANGELOG.md`, then regenerate the compiled version:
+`VERSION` is the single SemVer source. A Git tag uses the same value prefixed with `v`, for example `v2.0.1`. For a later version, update `VERSION` and `CHANGELOG.md`, then regenerate the compiled version:
 
 ```bash
 python3 scripts/release.py check --write
@@ -22,7 +24,7 @@ The runner labels are listed in the [official GitHub runner reference](https://d
 
 The owner must complete the [manual AWS acceptance procedure](manual-aws-acceptance.md) on an authorized machine. Do not replace real acceptance with emulator results. Keep tokens, credentials and personal configuration out of release records.
 
-`.github/release-acceptance.json` defaults to `PENDING`, with every real acceptance case `R01` through `R09` marked `NOT_RUN`. Only after observing all nine cases pass for the intended version and source, record their `PASS` values, set the top-level status to `PASS`, and record the exact source fingerprint:
+For a new release, mark `.github/release-acceptance.json` `PENDING` and all cases `R01` through `R09` `NOT_RUN` until the new source is tested. The published 2.0.1 record already contains `PASS`; it is not a fresh template. Only after observing all nine cases pass for the intended version and source, record their `PASS` values, set the top-level status to `PASS`, and record the exact source fingerprint:
 
 ```bash
 python3 scripts/release.py fingerprint

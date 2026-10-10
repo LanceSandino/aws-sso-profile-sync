@@ -1,6 +1,8 @@
 # Manual AWS acceptance
 
-Run this procedure only on an explicitly authorized machine with legitimate existing IAM Identity Center access. An owner may authorize an agent to assist interactively; development tests and CI must never access real AWS. No real account, organization, Identity Center instance, permission set or assignment needs to be created. All real-AWS results below start NOT_RUN; Floci results do not substitute for them.
+Stable **2.0.1 passed R01–R09** on an owner-authorized system. See the [release's acceptance record](https://github.com/LanceSandino/aws-sso-profile-sync/blob/v2.0.1/.github/release-acceptance.json). Observed scope was two named sessions, two profile regions and one Identity Center region, including independent AWS CLI discovery and generated-profile identity, preservation, explicit overrides, aliases and real token refresh. Refresh used an operator-forced expiry of a copied tool token; natural-expiry R07 and other tenants, partitions and provider regions were not certified.
+
+This document is a repeatable maintainer procedure, not a pending-installation checklist. Run it for a new release or another environment only on an authorized machine with legitimate IAM Identity Center access. Development tests and CI must never access real AWS. No real account, organization, Identity Center instance, permission set or assignment needs to be created. Keep credentials and tenant evidence private; Floci results do not substitute for real acceptance.
 
 ## Preflight and recovery
 
@@ -48,7 +50,7 @@ After a safe real expiry interval or approved operator test, observe read-only d
 
 ## Acceptance record
 
-The table below is a fresh-run template, not the current candidate result. See the [source-bound acceptance record](../.github/release-acceptance.json) for recorded results. Never carry a previous candidate's PASS into a changed source tree.
+The table below is a blank worksheet for a **new acceptance run**, not the 2.0.1 result. All nine released 2.0.1 cases passed as recorded above. Never carry a previous release's PASS into a changed source tree.
 
 | ID | Observation | Status |
 | --- | --- | --- |
@@ -56,8 +58,8 @@ The table below is a fresh-run template, not the current candidate result. See t
 | R02 | Expected real account-role visibility | NOT_RUN |
 | R03 | Real plan correct and strictly read-only | NOT_RUN |
 | R04 | Explicit sync valid; unrelated configuration preserved | NOT_RUN |
-| R05 | AWS CLI consumes profiles and returns expected identity | NOT_RUN |
-| R06 | Repeated sync no-op; roles/names handled correctly | NOT_RUN |
+| R05 | Repeated sync no-op; roles/names handled correctly | NOT_RUN |
+| R06 | AWS CLI consumes profiles and returns expected identity | NOT_RUN |
 | R07 | Real expiry, refresh/re-login and CLI interoperability | NOT_RUN |
 | R08 | Multiple sessions and SSO/profile regions | NOT_RUN |
 | R09 | Sanitized evidence and recovery procedure recorded | NOT_RUN |

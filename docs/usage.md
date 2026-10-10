@@ -2,7 +2,7 @@
 
 The normal workflow is: authenticate once, discover your account-role assignments, review a plan, and sync the selected profiles. Later syncs update those managed profiles while preserving unrelated configuration.
 
-The original tool has been used daily across more than 50 AWS accounts. Version 2.0.0 is a substantial rewrite, with automated tests using synthetic AWS SSO data. Real IAM Identity Center login, refresh and AWS CLI profile consumption are tracked separately in the [acceptance record](../.github/release-acceptance.json). The network examples below describe the authorized operator workflow; development tests never use real AWS.
+The original tool has been used daily across more than 50 AWS accounts. Version 2.0.1 is a substantial rewrite, with automated tests using synthetic AWS SSO data. Real IAM Identity Center login, refresh and AWS CLI profile consumption are tracked separately in the [release acceptance record](https://github.com/LanceSandino/aws-sso-profile-sync/blob/v2.0.1/.github/release-acceptance.json). The network examples below describe the authorized operator workflow; development tests never use real AWS.
 
 ## Install and check the executable
 
@@ -14,7 +14,7 @@ GOBIN="$(pwd)/dist/local-bin" go install .
 ./dist/local-bin/aws-sso-profile-sync --help
 ```
 
-The examples below use `aws-sso-profile-sync` on PATH. Use the installed executable's full path if you have not added its directory to PATH. A source build installs the checkout you built; select the `v2.0.0` tag as shown in the installation guide. The public Homebrew tap installs released archives.
+The examples below use `aws-sso-profile-sync` on PATH. Use the installed executable's full path if you have not added its directory to PATH. A source build installs the checkout you built; select the `v2.0.1` tag as shown in the installation guide. The public Homebrew tap installs released archives.
 
 ## Choose the session and files
 

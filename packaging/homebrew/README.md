@@ -1,4 +1,14 @@
-# Homebrew release preparation
+# Homebrew packaging
+
+AWS SSO Profile Sync 2.0.1 is published and available from the public shared
+[Homebrew tap](https://github.com/LanceSandino/homebrew-tap):
+
+```sh
+brew install LanceSandino/tap/aws-sso-profile-sync
+```
+
+The instructions below are for maintainers generating a formula for a future
+release. Users can follow [installation](../../docs/install.md).
 
 `scripts/homebrew.py` produces a formula from `VERSION`, all four local release
 archives and their actual `SHA256SUMS`. It verifies every digest and the embedded
@@ -16,22 +26,19 @@ python3 scripts/homebrew.py --version-file VERSION --dist-dir "dist/$(cat VERSIO
 python3 -m unittest discover -s tests/distribution -p test_homebrew.py
 ```
 
-The release workflow can attach this formula to the draft alongside matching
-archives and checksums. A draft does not make its download URLs publicly usable.
-After the owner publishes the accepted release, open a reviewable PR containing
+The release workflow uploads the generated formula as a `homebrew-handoff`
+workflow artifact; the draft contains the four archives and `SHA256SUMS`.
+A draft does not make its download URLs publicly usable.
+After publishing the accepted release, open a reviewable PR containing
 the generated formula in `LanceSandino/homebrew-tap/Formula/`. Verify the PR's
 hashes against the exact published assets and run the tap checks before merging.
 Formula generation does not publish a release or change the tap.
 
-`tap/` is the standalone future tap scaffold. Its CI builds candidate archives
-from an explicit app source revision, audits the generated public formula, then
-installs a copy using only a loopback HTTP server serving those local archives.
-The default source branch is `feature/release-review`; a dispatch or repository
-variable can select another reviewable revision. Native Homebrew checks both the
-release version and SemVer build metadata before installation.
-That tests packaging before public assets exist. It does not certify real AWS
-or public download availability. The formula's own test runs only `--version`
-and offline `doctor` with disposable HOME and explicit AWS file paths.
-
-No public Homebrew installation is available until the owner publishes the
-release assets and merges the corresponding tap formula.
+`tap/` preserves the original bootstrap snapshot. The standalone tap has its own
+lifecycle and later CI fixes; its current README and validation files are the
+maintenance authority. Candidate CI validates freshly built archives through a
+loopback server. Published CI independently verifies public release assets and
+installs the actual formula on all four targets. Its offline test uses disposable
+HOME and explicit AWS paths. These checks passed for published 2.0.1; they must run
+again for each formula update. Neither workflow automatically publishes releases
+or updates formulas.
