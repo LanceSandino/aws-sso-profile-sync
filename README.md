@@ -6,7 +6,7 @@ AWS SSO Profile Sync is a Go CLI that turns your AWS IAM Identity Center account
 
 Managing SSO profiles across many AWS accounts meant repetitive configuration work and profiles that drifted as access changed. I couldn't find a tool that fit my workflow, so I built the original flags-only version. I used it daily across more than 50 AWS accounts at multiple companies.
 
-This **2.0.0-rc.1** candidate replaces that original implementation with explicit authentication, deterministic planning and guarded configuration updates. The original tool's field use is separate from this rewrite's validation: the candidate has been tested locally with synthetic AWS data, while **real AWS IAM Identity Center and AWS CLI acceptance remains pending**. No release has been published.
+This **2.0.0-rc.1** candidate replaces that original implementation with explicit authentication, deterministic planning and guarded configuration updates. The original tool's field use is separate from this rewrite's validation. Automated checks use synthetic AWS data; [real IAM Identity Center and AWS CLI acceptance](.github/release-acceptance.json) is tracked separately for the exact candidate source. No release has been published.
 
 ## What it does
 
@@ -21,7 +21,7 @@ This **2.0.0-rc.1** candidate replaces that original implementation with explici
 - Refuses malformed configuration, conflicting session bindings, externally edited managed identities and concurrent changes.
 - Uses bounded requests, advisory locking, atomic file replacement and recoverable ownership metadata; unchanged syncs preserve file bytes.
 
-It is a CLI, with no GUI, daemon, cloud provisioning or AWS CLI installation dependency. AWS CLI token interoperability still requires real acceptance testing.
+It is a CLI, with no GUI, daemon, cloud provisioning or AWS CLI installation dependency. AWS CLI interoperability is verified separately through real acceptance testing.
 
 ## Install the candidate
 
@@ -125,7 +125,7 @@ Read [architecture and public design decisions](docs/architecture.md) for the da
 
 [Development instructions](docs/development.md) describe isolated build, vet, race, coverage and fuzz checks, plus real Floci/Testcontainers integration with synthetic accounts, roles, permission sets and device authorization. Development tests use disposable HOME/config/state paths and never access real AWS endpoints, actual credentials or personal AWS configuration. Go statement coverage is enforced at **85% or higher**.
 
-Native CI targets all four candidate platforms and runs a separate Floci integration job. A workflow declaration is not proof that hosted validation has run, and emulator results do not establish real AWS production compatibility. Real acceptance is recorded separately and remains pending.
+Native CI targets all four candidate platforms and runs a separate Floci integration job. A workflow declaration is not proof that hosted validation has run, and emulator results do not establish real AWS production compatibility. The [acceptance record](.github/release-acceptance.json) reports real acceptance for its recorded version and source fingerprint.
 
 See the [changelog](CHANGELOG.md) for user-visible changes and [release instructions](docs/releasing.md) for versioning, acceptance and owner-controlled publication.
 

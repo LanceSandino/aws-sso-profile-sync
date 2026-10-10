@@ -1,6 +1,6 @@
 # Preparing an approved release
 
-`2.0.0-rc.1` is an unpublished candidate. Local emulator validation is separate from real AWS IAM Identity Center and AWS CLI acceptance, which remains pending. The release workflow starts only by manual dispatch on the default `main` branch. It never automatically publishes a release.
+`2.0.0-rc.1` is an unpublished candidate. Local emulator validation is separate from the source-bound real AWS IAM Identity Center and AWS CLI acceptance record. The release workflow starts only by manual dispatch on the default `main` branch. It never automatically publishes a release.
 
 ## Version and validation
 

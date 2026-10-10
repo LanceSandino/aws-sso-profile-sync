@@ -2,7 +2,7 @@
 
 The normal workflow is: authenticate once, discover your account-role assignments, review a plan, and sync the selected profiles. Later syncs update those managed profiles while preserving unrelated configuration.
 
-The original tool has been used daily across more than 50 AWS accounts. This release candidate is a rewrite tested with synthetic AWS SSO data. Real IAM Identity Center login, refresh and AWS CLI profile consumption remain pending [manual acceptance](manual-aws-acceptance.md). The network examples below describe that future operator workflow; they were not run against real AWS during development.
+The original tool has been used daily across more than 50 AWS accounts. This release candidate is a rewrite tested with synthetic AWS SSO data. Real IAM Identity Center login, refresh and AWS CLI profile consumption are tracked separately in the [acceptance record](../.github/release-acceptance.json). The network examples below describe the authorized operator workflow; development tests never use real AWS.
 
 ## Install and check the executable
 

@@ -1,4 +1,4 @@
-# Manual AWS acceptance — NOT RUN
+# Manual AWS acceptance
 
 Run this procedure only on an explicitly authorized machine with legitimate existing IAM Identity Center access. An owner may authorize an agent to assist interactively; development tests and CI must never access real AWS. No real account, organization, Identity Center instance, permission set or assignment needs to be created. All real-AWS results below start NOT_RUN; Floci results do not substitute for them.
 
@@ -48,6 +48,8 @@ After a safe real expiry interval or approved operator test, observe read-only d
 
 ## Acceptance record
 
+The table below is a fresh-run template, not the current candidate result. See the [source-bound acceptance record](../.github/release-acceptance.json) for recorded results. Never carry a previous candidate's PASS into a changed source tree.
+
 | ID | Observation | Status |
 | --- | --- | --- |
 | R01 | Named real IAM Identity Center login | NOT_RUN |
@@ -60,4 +62,4 @@ After a safe real expiry interval or approved operator test, observe read-only d
 | R08 | Multiple sessions and SSO/profile regions | NOT_RUN |
 | R09 | Sanitized evidence and recovery procedure recorded | NOT_RUN |
 
-Update an R-series result to PASS only after observing it on the real authorized system. Failures become tracked compatibility findings and receive local regression anchors when reproducible. Until then: **NOT RUN — real AWS IAM Identity Center/AWS CLI acceptance deferred for owner execution.**
+Update an R-series result to PASS only after observing it on the real authorized system. Failures become tracked compatibility findings and receive local regression anchors when reproducible. Unexecuted observations remain **NOT_RUN**.

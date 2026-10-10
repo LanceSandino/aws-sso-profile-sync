@@ -2,7 +2,7 @@
 
 AWS SSO Profile Sync turns the account and role assignments visible through IAM Identity Center into AWS shared-config profiles. It handles discovery, naming and configuration updates so that adding another account does not mean hand-writing another profile block.
 
-The original tool has been used daily across more than 50 AWS accounts. This rewrite separates authentication, discovery, planning and file updates, with particular attention to preserving existing configuration. The rewrite has been tested with synthetic accounts and device authorization through Floci; its real AWS and AWS CLI compatibility still requires [manual acceptance](manual-aws-acceptance.md).
+The original tool has been used daily across more than 50 AWS accounts. This rewrite separates authentication, discovery, planning and file updates, with particular attention to preserving existing configuration. Synthetic accounts and device authorization are tested through Floci; real AWS and AWS CLI compatibility is recorded separately through [manual acceptance](manual-aws-acceptance.md).
 
 ## One process, clear boundaries
 

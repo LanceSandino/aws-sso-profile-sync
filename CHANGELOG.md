@@ -33,7 +33,7 @@ Release notes describe user-visible changes, newest first.
 - Authentication validates cache binding, expiry and permissions; SDK requests have bounded concurrency, retries and deadlines.
 - Manual release preparation requires version-bound real AWS acceptance and owner approval, and creates a draft for review.
 
-Real AWS IAM Identity Center and AWS CLI acceptance remains pending. No release has been published.
+Real AWS IAM Identity Center and AWS CLI acceptance is tracked in the [source-bound acceptance record](.github/release-acceptance.json). No release has been published.
 
 ## Legacy tool — unversioned
 
