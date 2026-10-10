@@ -3,7 +3,7 @@
 This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Release notes describe user-visible changes, newest first.
 
-## [2.0.0-rc.1] — Unreleased
+## [2.0.0] — 2026-10-10
 
 ### Added
 
@@ -12,7 +12,7 @@ Release notes describe user-visible changes, newest first.
 - Private named-session token caching, explicit refresh and device authorization.
 - Optional named settings contexts for reusable SSO sessions, regions and role selections; command-line flags take precedence.
 - Duplicate-profile warnings with stable identity keys, while retaining manual aliases and script-dependent names.
-- Reproducible candidate archives, checksums, isolated installation and rollback instructions.
+- Homebrew installation from a public tap and reproducible release archives, checksums, isolated installation and rollback instructions.
 - Native Linux and macOS validation for Intel and ARM targets, with separate emulator tests.
 
 ### Fixed
@@ -34,7 +34,7 @@ Release notes describe user-visible changes, newest first.
 - Authentication validates cache binding, expiry and permissions; SDK requests have bounded concurrency, retries and deadlines.
 - Manual release preparation requires version-bound real AWS acceptance and owner approval, and creates a draft for review.
 
-Real AWS IAM Identity Center and AWS CLI acceptance is tracked in the [source-bound acceptance record](.github/release-acceptance.json). No release has been published.
+Real AWS IAM Identity Center and AWS CLI acceptance is tracked in the [source-bound acceptance record](.github/release-acceptance.json).
 
 ## Legacy tool — unversioned
 

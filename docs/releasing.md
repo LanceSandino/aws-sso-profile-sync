@@ -1,10 +1,10 @@
 # Preparing an approved release
 
-`2.0.0-rc.1` is an unpublished candidate. Local emulator validation is separate from the source-bound real AWS IAM Identity Center and AWS CLI acceptance record. The release workflow starts only by manual dispatch on the default `main` branch. It never automatically publishes a release.
+`2.0.0` is the first semantic release of this rewrite. Local emulator validation is separate from the source-bound real AWS IAM Identity Center and AWS CLI acceptance record. The release workflow starts only by manual dispatch on the default `main` branch. It never automatically publishes a release.
 
 ## Version and validation
 
-`VERSION` is the single SemVer source. A Git tag uses the same value prefixed with `v`, for example `v2.0.0-rc.1`. For a later version, update `VERSION` and `CHANGELOG.md`, then regenerate the compiled version:
+`VERSION` is the single SemVer source. A Git tag uses the same value prefixed with `v`, for example `v2.0.0`. For a later version, update `VERSION` and `CHANGELOG.md`, then regenerate the compiled version:
 
 ```bash
 python3 scripts/release.py check --write
@@ -51,4 +51,4 @@ Download the draft assets, compare the four expected OS/architecture names and v
 
 Publishing the draft is a separate manual owner action after that review. A GitHub draft is not a public release, and no workflow automatically changes it to published. Record the published tag and immutable asset URLs only after the owner publishes.
 
-A later Homebrew handoff must use that published version and the corresponding Darwin/Linux Intel/ARM archive URLs and SHA-256 values. Update a formula in the owner-selected tap only with separate authorization, verify installation and version reporting on the supported machines, and run offline diagnostics with an isolated HOME. This repository does not automatically update Homebrew, a package registry or `@latest` source installation.
+The public Homebrew tap must use that published version and the corresponding Darwin/Linux Intel/ARM archive URLs and SHA-256 values. Update the formula in [LanceSandino/homebrew-tap](https://github.com/LanceSandino/homebrew-tap) only with owner authorization, verify installation and version reporting on the supported machines, and run offline diagnostics with an isolated HOME. The tap has separate native validation for candidate archives and published release installation. Its published validation checks release checksums, exact formula contents, installation and offline diagnostics on all four targets. Users install with `brew install LanceSandino/tap/aws-sso-profile-sync`; see [installation](install.md). This repository does not automatically publish a release or update the tap.

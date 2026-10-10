@@ -2,11 +2,11 @@
 
 The normal workflow is: authenticate once, discover your account-role assignments, review a plan, and sync the selected profiles. Later syncs update those managed profiles while preserving unrelated configuration.
 
-The original tool has been used daily across more than 50 AWS accounts. This release candidate is a rewrite tested with synthetic AWS SSO data. Real IAM Identity Center login, refresh and AWS CLI profile consumption are tracked separately in the [acceptance record](../.github/release-acceptance.json). The network examples below describe the authorized operator workflow; development tests never use real AWS.
+The original tool has been used daily across more than 50 AWS accounts. Version 2.0.0 is a substantial rewrite, with automated tests using synthetic AWS SSO data. Real IAM Identity Center login, refresh and AWS CLI profile consumption are tracked separately in the [acceptance record](../.github/release-acceptance.json). The network examples below describe the authorized operator workflow; development tests never use real AWS.
 
 ## Install and check the executable
 
-Follow [installation and rollback](install.md) for source builds, candidate archives, checksum verification and an explicit installation prefix. From a reviewed source checkout with Go 1.25 or newer:
+Follow [installation and rollback](install.md) for source builds, release archives, checksum verification and an explicit installation prefix. From a reviewed source checkout with Go 1.25 or newer:
 
 ```bash
 GOBIN="$(pwd)/dist/local-bin" go install .
@@ -14,7 +14,7 @@ GOBIN="$(pwd)/dist/local-bin" go install .
 ./dist/local-bin/aws-sso-profile-sync --help
 ```
 
-The examples below use `aws-sso-profile-sync` on PATH. Use the installed executable's full path if you have not added its directory to PATH. A source build installs the checkout you built; remote `@latest` and Homebrew availability depend on publication and do not imply this candidate has already been released.
+The examples below use `aws-sso-profile-sync` on PATH. Use the installed executable's full path if you have not added its directory to PATH. A source build installs the checkout you built; the public Homebrew tap installs released archives, and `go install ...@v2.0.0` selects this version explicitly.
 
 ## Choose the session and files
 

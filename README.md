@@ -6,7 +6,7 @@ AWS SSO Profile Sync is a Go CLI that turns your AWS IAM Identity Center account
 
 Managing SSO profiles across many AWS accounts meant repetitive configuration work and profiles that drifted as access changed. I couldn't find a tool that fit my workflow, so I built the original flags-only version. I used it daily across more than 50 AWS accounts at multiple companies.
 
-This **2.0.0-rc.1** candidate replaces that original implementation with explicit authentication, deterministic planning and guarded configuration updates. The original tool's field use is separate from this rewrite's validation. Automated checks use synthetic AWS data; [real IAM Identity Center and AWS CLI acceptance](.github/release-acceptance.json) is tracked separately for the exact candidate source. No release has been published.
+Version **2.0.0** replaces that original implementation with explicit authentication, deterministic planning and guarded configuration updates. The original tool's field use is separate from this rewrite's validation. Automated checks use synthetic AWS data; [real IAM Identity Center and AWS CLI acceptance](.github/release-acceptance.json) is tracked separately for the exact release source.
 
 ## What it does
 
@@ -23,20 +23,29 @@ This **2.0.0-rc.1** candidate replaces that original implementation with explici
 
 It is a CLI, with no GUI, daemon, cloud provisioning or AWS CLI installation dependency. AWS CLI interoperability is verified separately through real acceptance testing.
 
-## Install the candidate
+## Installation
 
-Build the reviewed checkout with Go 1.25 or newer; local validation and the primary CI jobs use Go 1.27.1:
+### Homebrew (macOS and Linux)
 
 ```bash
-GOBIN="$(pwd)/dist/local-bin" go install .
-./dist/local-bin/aws-sso-profile-sync --version
+brew install LanceSandino/tap/aws-sso-profile-sync
+aws-sso-profile-sync --version
 ```
 
-Add that installation directory to your PATH if you want to use the shorter command below. This installs the current checkout. Remote `go install ...@latest` resolves published source and does not install unpublished candidate changes.
+The public [Homebrew tap](https://github.com/LanceSandino/homebrew-tap) installs the matching release archive and verifies its checksum. Upgrade with `brew upgrade aws-sso-profile-sync`.
 
-Candidate targets are **Linux amd64/arm64 and macOS amd64/arm64**. Windows is unsupported. Building an archive for a target is separate from executing and verifying it on that target.
+### Go or release archive
 
-See [installation and rollback](docs/install.md) for archives, checksums, explicit installation prefixes and backups. Homebrew installation is planned after the owner publishes matching release assets and a reviewed formula; see [release and Homebrew instructions](docs/releasing.md).
+With Go 1.25 or newer:
+
+```bash
+go install github.com/LanceSandino/aws-sso-profile-sync@v2.0.0
+aws-sso-profile-sync --version
+```
+
+Add Go's binary directory to PATH if needed. Alternatively, download the matching archive and `SHA256SUMS` from the [2.0.0 release](https://github.com/LanceSandino/aws-sso-profile-sync/releases/tag/v2.0.0). See [installation and rollback](docs/install.md) for checksum verification, explicit installation prefixes, source builds and backups.
+
+Supported targets are **Linux amd64/arm64 and macOS amd64/arm64**. Windows is unsupported. Each target has native build, test, archive installation and offline diagnostic validation.
 
 ## Walkthrough
 
@@ -125,7 +134,7 @@ Read [architecture and public design decisions](docs/architecture.md) for the da
 
 [Development instructions](docs/development.md) describe isolated build, vet, race, coverage and fuzz checks, plus real Floci/Testcontainers integration with synthetic accounts, roles, permission sets and device authorization. Development tests use disposable HOME/config/state paths and never access real AWS endpoints, actual credentials or personal AWS configuration. Go statement coverage is enforced at **85% or higher**.
 
-Native CI targets all four candidate platforms and runs a separate Floci integration job. A workflow declaration is not proof that hosted validation has run, and emulator results do not establish real AWS production compatibility. The [acceptance record](.github/release-acceptance.json) reports real acceptance for its recorded version and source fingerprint.
+Native CI targets all four supported platforms and runs a separate Floci integration job. A workflow declaration is not proof that hosted validation has run, and emulator results do not establish real AWS production compatibility. The [acceptance record](.github/release-acceptance.json) reports real acceptance for its recorded version and source fingerprint.
 
 See the [changelog](CHANGELOG.md) for user-visible changes and [release instructions](docs/releasing.md) for versioning, acceptance and owner-controlled publication.
 
