@@ -40,6 +40,16 @@ type Result struct {
 	Status  string  `json:"status"`
 	Reason  string  `json:"reason"`
 }
+
+// Warning describes nonsecret configuration choices without authorizing changes.
+type Warning struct {
+	Code        string   `json:"code"`
+	Profiles    []string `json:"profiles"`
+	Field       string   `json:"field,omitempty"`
+	Existing    string   `json:"existing,omitempty"`
+	Requested   string   `json:"requested,omitempty"`
+	IdentityKey string   `json:"identity_key,omitempty"`
+}
 type Error struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`
