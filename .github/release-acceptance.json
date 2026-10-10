@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
   "version": "2.0.0",
-  "status": "PENDING",
+  "status": "PASS",
   "source_fingerprint": "sha256:f79eae5e9a48ab89335ecdedc3f655af984cb5057ec25e43cb611639a89a78be",
   "real_aws_acceptance": {
-    "R01": "NOT_RUN",
-    "R02": "NOT_RUN",
-    "R03": "NOT_RUN",
-    "R04": "NOT_RUN",
-    "R05": "NOT_RUN",
-    "R06": "NOT_RUN",
-    "R07": "NOT_RUN",
-    "R08": "NOT_RUN",
-    "R09": "NOT_RUN"
+    "R01": "PASS",
+    "R02": "PASS",
+    "R03": "PASS",
+    "R04": "PASS",
+    "R05": "PASS",
+    "R06": "PASS",
+    "R07": "PASS",
+    "R08": "PASS",
+    "R09": "PASS"
   },
-  "notes": "The emulator readiness regressions and minimal security dependency updates passed focused race checks and minimum Go 1.25 builds. Patching integration dependencies requires golang.org/x/sys v0.45.0, also used by safe settings-file access in the compiled CLI; prior binary-equivalence acceptance no longer applies. Fresh owner-authorized R01-R09 must pass on this final source and release-flag binary before merge, tagging or publication. Earlier private receipts are preserved with their original source provenance."
+  "notes": "Fresh owner-authorized R01-R09 and eight preservation/settings cases passed on final patched source d295b1d, fingerprint f79eae5e9a48ab89335ecdedc3f655af984cb5057ec25e43cb611639a89a78be, version 2.0.0 and native Darwin ARM release-flag binary SHA256 5abda1933f049f009e0bba81891c859996dc35269627b41b2ae170dc9a2ab771. The binary exactly matches native CI run 38035737121. Independent AWS CLI full discovery, generated profile identity, repeat sync, preservation/overrides/aliases/settings, real refresh, two named sessions with two profile regions at one provider region, and private recovery evidence passed. The separate owned CLI token was refreshed through the official CLI after expiry; the secondary token expired between plan and sync, the write was refused, and isolation passed after explicit refresh. Failed attempts are preserved privately. Original work checkout/configuration/adjacent state were verified unchanged; no IAM mutations or personal token-cache import. Natural-expiry R07, other tenants/partitions and other provider regions were not certified. Owner authorizes green-check merge, verified stable publication and public Homebrew validation."
 }
