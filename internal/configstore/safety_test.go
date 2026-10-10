@@ -2,14 +2,18 @@ package configstore
 
 import (
 	"context"
-	"github.com/LanceSandino/aws-sso-profile-sync/internal/domain"
+	"encoding/json"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
+
+	"github.com/LanceSandino/aws-sso-profile-sync/internal/domain"
 )
 
 func TestC01NestedAndInlineComments(t *testing.T) {
@@ -36,25 +40,78 @@ func TestC01NestedAndInlineComments(t *testing.T) {
 	}
 }
 
-func TestC07OnlySystemAliasesAllowed(t *testing.T) {
-	if runtime.GOOS != "darwin" {
-		return
-	}
-	root, e := os.MkdirTemp("/private/tmp", "aws-sso-alias-")
+func TestC05NewFileModes(t *testing.T) {
+	s, b, up, owned := fixture(t)
+	preview, e := Preview(b, up)
 	if e != nil {
 		t.Fatal(e)
 	}
-	defer os.RemoveAll(root)
-	s := Store{Path: strings.Replace(root, "/private/tmp", "/tmp", 1) + "/config"}
-	if _, e = s.Read(); e != nil {
-		t.Fatal("system tmp alias refused", e)
+	if _, e = os.Stat(filepath.Dir(s.Path)); !os.IsNotExist(e) {
+		t.Fatal("preview wrote", e)
 	}
-	canonical := tempRoot(t)
-	if strings.HasPrefix(canonical, "/private/var/") {
-		s.Path = strings.Replace(canonical, "/private/var", "/var", 1) + "/config"
-		if _, e = s.Read(); e != nil {
-			t.Fatal("system var alias refused", e)
+	if e := s.Apply(context.Background(), b, up, owned); e != nil {
+		t.Fatal(e)
+	}
+	got, e := os.ReadFile(s.Path)
+	if e != nil || string(got) != string(preview) {
+		t.Fatal("preview differs", e)
+	}
+	for _, path := range []string{s.Path, s.Path + ".aws-sso-sync.json"} {
+		info, e := os.Stat(path)
+		if e != nil || info.Mode().Perm() != 0600 {
+			t.Fatal(info, e)
 		}
+	}
+}
+
+func TestC08ConcurrentWriters(t *testing.T) {
+	s, b, up, owned := fixture(t)
+	var wg sync.WaitGroup
+	errs := make(chan error, 2)
+	for i := 0; i < 2; i++ {
+		wg.Add(1)
+		go func() { defer wg.Done(); errs <- s.Apply(context.Background(), b, up, owned) }()
+	}
+	wg.Wait()
+	close(errs)
+	passed, conflicted := 0, 0
+	for e := range errs {
+		if e == nil {
+			passed++
+		} else if domain.ErrorCode(e) == "conflict" {
+			conflicted++
+		} else {
+			t.Fatal(e)
+		}
+	}
+	if passed != 1 || conflicted != 1 {
+		t.Fatal(passed, conflicted)
+	}
+	got, e := s.Read()
+	if e != nil || len(got.Owned) != 1 || len(got.Sections) != 2 {
+		t.Fatal(got, e)
+	}
+}
+
+func TestC08LockDeadlineAndCancellation(t *testing.T) {
+	s, b, up, owned := fixture(t)
+	os.MkdirAll(filepath.Dir(s.Path), 0700)
+	unlock, e := lock(context.Background(), s.Path+".aws-sso-sync.lock")
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer unlock()
+	started := time.Now()
+	if e := s.Apply(context.Background(), b, up, owned); domain.ErrorCode(e) != "timed_out" {
+		t.Fatal(e)
+	}
+	if time.Since(started) > 3*time.Second {
+		t.Fatal("unbounded lock")
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if e := s.Apply(ctx, b, up, owned); !errors.Is(e, context.Canceled) {
+		t.Fatal(e)
 	}
 }
 
@@ -107,27 +164,109 @@ func TestC08LockReleasedAfterProcessDeath(t *testing.T) {
 	unlock()
 }
 
-func TestC05NewFileModes(t *testing.T) {
-	s, b, up, owned := fixture(t)
-	preview, e := Preview(b, up)
+func TestC07OnlySystemAliasesAllowed(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		return
+	}
+	root, e := os.MkdirTemp("/private/tmp", "aws-sso-alias-")
 	if e != nil {
 		t.Fatal(e)
 	}
-	if _, e = os.Stat(filepath.Dir(s.Path)); !os.IsNotExist(e) {
-		t.Fatal("preview wrote", e)
+	defer os.RemoveAll(root)
+	s := Store{Path: strings.Replace(root, "/private/tmp", "/tmp", 1) + "/config"}
+	if _, e = s.Read(); e != nil {
+		t.Fatal("system tmp alias refused", e)
 	}
+	canonical := tempRoot(t)
+	if strings.HasPrefix(canonical, "/private/var/") {
+		s.Path = strings.Replace(canonical, "/private/var", "/var", 1) + "/config"
+		if _, e = s.Read(); e != nil {
+			t.Fatal("system var alias refused", e)
+		}
+	}
+}
+
+func TestC09MidCommitExternalEdit(t *testing.T) {
+	s, b, up, owned := fixture(t)
+	s.Fault = func(stage string) error {
+		if stage == "rename" {
+			return os.WriteFile(s.Path, []byte("[default]\nregion=external\n"), 0600)
+		}
+		return nil
+	}
+	if e := s.Apply(context.Background(), b, up, owned); domain.ErrorCode(e) != "conflict" {
+		t.Fatal(e)
+	}
+	got, _ := os.ReadFile(s.Path)
+	if string(got) != "[default]\nregion=external\n" {
+		t.Fatal(string(got))
+	}
+	if _, e := s.Read(); domain.ErrorCode(e) != "conflict" {
+		t.Fatal("uncertain intent not diagnosed", e)
+	}
+}
+
+func TestC12ReadbackFailureAndUncommittedRecovery(t *testing.T) {
+	for _, stage := range []string{"readback", "temp_write"} {
+		t.Run(stage, func(t *testing.T) {
+			s, b, up, owned := fixture(t)
+			s.Fault = func(v string) error {
+				if v == stage {
+					return errors.New("injected")
+				}
+				return nil
+			}
+			if e := s.Apply(context.Background(), b, up, owned); e == nil {
+				t.Fatal("false success")
+			}
+			s.Fault = nil
+			snap, e := s.Read()
+			if e != nil {
+				t.Fatal(e)
+			}
+			if e = s.Apply(context.Background(), snap, up, owned); e != nil {
+				t.Fatal(e)
+			}
+			if _, e = s.Read(); e != nil {
+				t.Fatal(e)
+			}
+		})
+	}
+}
+
+func TestC02CorruptStateAndDirectories(t *testing.T) {
+	for _, suffix := range []string{"", ".aws-sso-sync.json", ".aws-sso-sync.intent"} {
+		s, _, _, _ := fixture(t)
+		os.MkdirAll(filepath.Dir(s.Path), 0700)
+		os.Mkdir(s.Path+suffix, 0700)
+		if _, e := s.Read(); e == nil {
+			t.Fatal("accepted directory", suffix)
+		}
+	}
+	for _, suffix := range []string{".aws-sso-sync.json", ".aws-sso-sync.intent"} {
+		s, _, _, _ := fixture(t)
+		os.MkdirAll(filepath.Dir(s.Path), 0700)
+		os.WriteFile(s.Path+suffix, []byte("{"), 0600)
+		if _, e := s.Read(); e == nil {
+			t.Fatal("accepted bad state")
+		}
+	}
+	s, b, up, owned := fixture(t)
 	if e := s.Apply(context.Background(), b, up, owned); e != nil {
 		t.Fatal(e)
 	}
-	got, e := os.ReadFile(s.Path)
-	if e != nil || string(got) != string(preview) {
-		t.Fatal("preview differs", e)
+	os.Chmod(s.Path+".aws-sso-sync.json", 0666)
+	if _, e := s.Read(); e == nil {
+		t.Fatal("accepted writable state")
 	}
-	for _, path := range []string{s.Path, s.Path + ".aws-sso-sync.json"} {
-		info, e := os.Stat(path)
-		if e != nil || info.Mode().Perm() != 0600 {
-			t.Fatal(info, e)
-		}
+	if _, e := (Store{}).Read(); e == nil {
+		t.Fatal("empty path")
+	}
+	s, _, _, _ = fixture(t)
+	os.MkdirAll(filepath.Dir(s.Path), 0700)
+	os.WriteFile(s.Path, []byte("broken"), 0600)
+	if _, e := s.Read(); domain.ErrorCode(e) != "config_invalid" {
+		t.Fatal(e)
 	}
 }
 
@@ -222,5 +361,73 @@ func TestC13NormalizedExistingSessionURL(t *testing.T) {
 	got, _ := os.ReadFile(s.Path)
 	if !strings.HasPrefix(string(got), old) {
 		t.Fatal("matching session rewritten")
+	}
+}
+
+func TestC02PreviewAndEmptyManifest(t *testing.T) {
+	s, b, _, _ := fixture(t)
+	if _, e := Preview(b, map[string]map[string]string{"bad\nsection": {"k": "v"}}); e == nil {
+		t.Fatal("invalid preview accepted")
+	}
+	b.Data = []byte("broken")
+	if _, e := Preview(b, nil); e == nil {
+		t.Fatal("invalid config preview accepted")
+	}
+	os.MkdirAll(filepath.Dir(s.Path), 0700)
+	os.WriteFile(s.Path+".aws-sso-sync.json", []byte{}, 0600)
+	if _, e := s.Read(); e == nil {
+		t.Fatal("empty manifest accepted")
+	}
+}
+
+func TestC03CancelBeforeRename(t *testing.T) {
+	s, b, up, owned := fixture(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	s.Fault = func(stage string) error {
+		if stage == "temp_write" {
+			cancel()
+		}
+		return nil
+	}
+	if e := s.Apply(ctx, b, up, owned); !errors.Is(e, context.Canceled) {
+		t.Fatal(e)
+	}
+	if _, e := os.Stat(s.Path); !os.IsNotExist(e) {
+		t.Fatal("canceled apply wrote config", e)
+	}
+}
+
+func TestC12NoopDiscardOldIntent(t *testing.T) {
+	s, b, _, _ := fixture(t)
+	os.MkdirAll(filepath.Dir(s.Path), 0700)
+	st := state{Version: 1, Path: s.Path, Hash: "not-committed", Before: b.Hash, Owned: map[string]domain.Profile{}}
+	bytes, _ := json.Marshal(st)
+	os.WriteFile(s.Path+".aws-sso-sync.intent", bytes, 0600)
+	b, e := s.Read()
+	if e != nil {
+		t.Fatal(e)
+	}
+	if e = s.Apply(context.Background(), b, nil, b.Owned); e != nil {
+		t.Fatal(e)
+	}
+	if _, e = os.Stat(s.Path + ".aws-sso-sync.intent"); !os.IsNotExist(e) {
+		t.Fatal(e)
+	}
+}
+
+func TestC03FilesystemPermissionFailures(t *testing.T) {
+	s, b, up, owned := fixture(t)
+	os.MkdirAll(filepath.Dir(s.Path), 0700)
+	os.Chmod(filepath.Dir(s.Path), 0500)
+	defer os.Chmod(filepath.Dir(s.Path), 0700)
+	if e := s.Apply(context.Background(), b, up, owned); e == nil {
+		t.Fatal("read-only parent accepted")
+	}
+	os.Chmod(filepath.Dir(s.Path), 0700)
+	os.WriteFile(s.Path, []byte("[default]\nregion=keep\n"), 0000)
+	defer os.Chmod(s.Path, 0600)
+	if _, e := s.Read(); e == nil {
+		t.Fatal("unreadable config accepted")
 	}
 }
