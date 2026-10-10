@@ -1,0 +1,94 @@
+name: Published formula validation
+on:
+  pull_request:
+    paths: ['Formula/aws-sso-profile-sync.rb']
+  push:
+    branches: [main, 'feature/**']
+    paths: ['Formula/aws-sso-profile-sync.rb']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Published stable application version
+        default: '2.0.0'
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: homebrew-published-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  published:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm, macos-15-intel, macos-15]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    env:
+      HOMEBREW_NO_AUTO_UPDATE: '1'
+      HOMEBREW_NO_INSTALL_FROM_API: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Set up Homebrew
+        uses: Homebrew/actions/setup-homebrew@fccef3b26268fc4a788fd7ad7c189f3a105cbf13
+        timeout-minutes: 5
+        with:
+          token: ${{ github.token }}
+          stable: true
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        env:
+          GIT_CONFIG_GLOBAL: ${{ runner.temp }}/application-checkout.gitconfig
+        with:
+          repository: LanceSandino/aws-sso-profile-sync
+          ref: ${{ vars.APP_SOURCE_REF }}
+          path: application
+          persist-credentials: false
+      - name: Verify published assets and install actual public formula
+        timeout-minutes: 10
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ inputs.version || '2.0.0' }}
+          PUBLISHED_SOURCE_SHA: ${{ vars.PUBLISHED_SOURCE_SHA }}
+        run: |
+          set -euo pipefail
+          while IFS= read -r variable; do
+            case "$variable" in AWS_*) unset "$variable" ;; esac
+          done < <(compgen -e)
+          export HOME="$RUNNER_TEMP/published-home"
+          export AWS_CONFIG_FILE="$HOME/.aws/config"
+          export AWS_SHARED_CREDENTIALS_FILE="$HOME/.aws/credentials"
+          export AWS_EC2_METADATA_DISABLED=true
+          export HOMEBREW_CACHE="$RUNNER_TEMP/published-cache"
+          export HOMEBREW_LOGS="$RUNNER_TEMP/published-logs"
+          mkdir -p "$HOME" "$HOMEBREW_CACHE" "$HOMEBREW_LOGS"
+          python3 -m unittest discover -s tests -p test_published.py
+          python3 scripts/published.py --version "$RELEASE_VERSION" --source "$PUBLISHED_SOURCE_SHA" --formula Formula/aws-sso-profile-sync.rb --application application --dist "$RUNNER_TEMP/published-assets"
+          python3 - "$RUNNER_TEMP/published-assets/receipt.json" <<'PY'
+          import hashlib, json, pathlib, subprocess, sys
+          formula='LanceSandino/tap/aws-sso-profile-sync'
+          receipt=json.loads(pathlib.Path(sys.argv[1]).read_text())
+          def run(arguments, timeout=120):
+              result=subprocess.run(['brew']+arguments, check=True, text=True, capture_output=True, timeout=timeout)
+              print(result.stdout, end=''); print(result.stderr, end='', file=sys.stderr)
+              return result.stdout
+          if subprocess.run(['brew','command','trust'], capture_output=True, timeout=30).returncode == 0:
+              run(['trust','--formula',formula])
+          tap=pathlib.Path(run(['--repository','LanceSandino/tap']).strip())
+          if (tap/'Formula/aws-sso-profile-sync.rb').read_bytes() != pathlib.Path('Formula/aws-sso-profile-sync.rb').read_bytes():
+              raise SystemExit('Homebrew tapped formula differs from verified release formula')
+          run(['style',str(tap/'Formula/aws-sso-profile-sync.rb')])
+          run(['audit','--strict',formula])
+          info=json.loads(run(['info','--json=v2',formula]))['formulae'][0]
+          if info['versions']['stable'] != receipt['version']:
+              raise SystemExit('Native Homebrew parsed a different published version')
+          run(['install','--formula',formula], timeout=180)
+          prefix=pathlib.Path(run(['--prefix',formula]).strip())
+          actual=hashlib.sha256((prefix/'bin/aws-sso-profile-sync').read_bytes()).hexdigest()
+          if actual != receipt['binary_sha256']:
+              raise SystemExit('Installed native binary differs from verified public release')
+          run(['test',formula])
+          print('Published native install and offline formula test PASS: '+receipt['native_target'])
+          PY
