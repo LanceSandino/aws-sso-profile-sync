@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "version": "2.0.0-rc.1",
+  "status": "PENDING",
+  "source_fingerprint": "PENDING",
+  "real_aws_acceptance": {
+    "R01": "NOT_RUN",
+    "R02": "NOT_RUN",
+    "R03": "NOT_RUN",
+    "R04": "NOT_RUN",
+    "R05": "NOT_RUN",
+    "R06": "NOT_RUN",
+    "R07": "NOT_RUN",
+    "R08": "NOT_RUN",
+    "R09": "NOT_RUN"
+  },
+  "notes": "Real AWS operator acceptance is pending. Local emulator validation does not authorize a release."
+}
