@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
   "version": "2.0.1",
-  "status": "PENDING",
-  "source_fingerprint": null,
+  "status": "PASS",
+  "source_fingerprint": "sha256:16f11e125e12156c4b186b137b3299f821fa8c5bcae9824da223f8f4633891c4",
   "real_aws_acceptance": {
-    "R01": "NOT_RUN",
-    "R02": "NOT_RUN",
-    "R03": "NOT_RUN",
-    "R04": "NOT_RUN",
-    "R05": "NOT_RUN",
-    "R06": "NOT_RUN",
-    "R07": "NOT_RUN",
-    "R08": "NOT_RUN",
-    "R09": "NOT_RUN"
+    "R01": "PASS",
+    "R02": "PASS",
+    "R03": "PASS",
+    "R04": "PASS",
+    "R05": "PASS",
+    "R06": "PASS",
+    "R07": "PASS",
+    "R08": "PASS",
+    "R09": "PASS"
   },
-  "notes": "Fresh source-bound 2.0.1 acceptance is required; the immutable 2.0.0 release retains its completed record."
+  "notes": "Fresh 2026-10-10 Darwin ARM acceptance passed all nine cases and eight preservation/settings checks on the shipping source. Valid cached sessions were reused; independent AWS CLI discovery and generated-profile identity matched. Original configuration remained unchanged. Refresh used a copied forced-expiry timestamp, not natural expiry. Session isolation covered two named sessions and two profile regions within one SSO provider region; other environments remain outside this observed scope."
 }
