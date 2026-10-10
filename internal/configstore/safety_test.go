@@ -1,10 +1,14 @@
 package configstore
 
 import (
+	"context"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestC01NestedAndInlineComments(t *testing.T) {
@@ -51,4 +55,53 @@ func TestC07OnlySystemAliasesAllowed(t *testing.T) {
 			t.Fatal("system var alias refused", e)
 		}
 	}
+}
+
+func TestC08LockReleasedAfterProcessDeath(t *testing.T) {
+	if child := os.Getenv("AWS_SSO_SYNC_LOCK_CHILD"); child != "" {
+		release, e := lock(context.Background(), child)
+		if e != nil {
+			t.Fatal(e)
+		}
+		defer release()
+		if e = os.WriteFile(child+".ready", nil, 0600); e != nil {
+			t.Fatal(e)
+		}
+		time.Sleep(5 * time.Second)
+		return
+	}
+	s, _, _, _ := fixture(t)
+	os.MkdirAll(filepath.Dir(s.Path), 0700)
+	path := s.Path + ".aws-sso-sync.lock"
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestC08LockReleasedAfterProcessDeath$")
+	cmd.Env = append(os.Environ(), "AWS_SSO_SYNC_LOCK_CHILD="+path)
+	if e := cmd.Start(); e != nil {
+		t.Fatal(e)
+	}
+	defer cmd.Process.Kill()
+	ready := false
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		if _, e := os.Stat(path + ".ready"); e == nil {
+			ready = true
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if !ready {
+		cmd.Process.Kill()
+		cmd.Wait()
+		t.Fatal("child did not acquire lock")
+	}
+	if e := cmd.Process.Kill(); e != nil {
+		t.Fatal(e)
+	}
+	cmd.Wait()
+	unlock, e := lock(ctx, path)
+	if e != nil {
+		t.Fatal("crash retained lock", e)
+	}
+	unlock()
 }
