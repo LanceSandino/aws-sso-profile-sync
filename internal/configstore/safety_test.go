@@ -2,6 +2,7 @@ package configstore
 
 import (
 	"context"
+	"github.com/LanceSandino/aws-sso-profile-sync/internal/domain"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -104,4 +105,122 @@ func TestC08LockReleasedAfterProcessDeath(t *testing.T) {
 		t.Fatal("crash retained lock", e)
 	}
 	unlock()
+}
+
+func TestC05NewFileModes(t *testing.T) {
+	s, b, up, owned := fixture(t)
+	preview, e := Preview(b, up)
+	if e != nil {
+		t.Fatal(e)
+	}
+	if _, e = os.Stat(filepath.Dir(s.Path)); !os.IsNotExist(e) {
+		t.Fatal("preview wrote", e)
+	}
+	if e := s.Apply(context.Background(), b, up, owned); e != nil {
+		t.Fatal(e)
+	}
+	got, e := os.ReadFile(s.Path)
+	if e != nil || string(got) != string(preview) {
+		t.Fatal("preview differs", e)
+	}
+	for _, path := range []string{s.Path, s.Path + ".aws-sso-sync.json"} {
+		info, e := os.Stat(path)
+		if e != nil || info.Mode().Perm() != 0600 {
+			t.Fatal(info, e)
+		}
+	}
+}
+
+func TestC13OwnershipIntentGuards(t *testing.T) {
+	s, b, up, owned := fixture(t)
+	other := b
+	other.Path += "other"
+	if e := s.Apply(context.Background(), other, up, owned); e == nil {
+		t.Fatal("path guard")
+	}
+	if e := s.Apply(context.Background(), b, map[string]map[string]string{"default": {"region": "x"}}, owned); e == nil {
+		t.Fatal("default takeover")
+	}
+	if e := s.Apply(context.Background(), b, up, map[string]domain.Profile{}); e == nil {
+		t.Fatal("missing ownership")
+	}
+	if e := s.Apply(context.Background(), b, map[string]map[string]string{}, owned); e == nil {
+		t.Fatal("ownership without update")
+	}
+	if e := s.Apply(context.Background(), b, up, owned); e != nil {
+		t.Fatal(e)
+	}
+	b, _ = s.Read()
+	metadata := map[string]domain.Profile{}
+	for k, p := range owned {
+		p.Region = "changed"
+		metadata[k] = p
+	}
+	if e := s.Apply(context.Background(), b, nil, metadata); e == nil {
+		t.Fatal("metadata changed without config update")
+	}
+	if e := s.Apply(context.Background(), b, nil, map[string]domain.Profile{}); e == nil {
+		t.Fatal("ownership deletion")
+	}
+	changed := map[string]domain.Profile{}
+	for k, p := range owned {
+		p.Assignment.RoleName = "Other"
+		changed[k] = p
+	}
+	if e := s.Apply(context.Background(), b, up, changed); e == nil {
+		t.Fatal("identity rebind")
+	}
+	os.WriteFile(s.Path, []byte(strings.ReplaceAll(string(b.Data), "region = us-west-2", "region = changed")), 0600)
+	b, _ = s.Read()
+	if e := s.Apply(context.Background(), b, up, owned); e == nil {
+		t.Fatal("external region overwritten")
+	}
+}
+
+func TestC13UnknownSettingsAndSessionMismatch(t *testing.T) {
+	for _, kind := range []string{"profile", "session", "metadata", "render"} {
+		t.Run(kind, func(t *testing.T) {
+			s, b, up, owned := fixture(t)
+			switch kind {
+			case "profile":
+				up["profile dev"]["credential_process"] = "injected"
+			case "session":
+				up["sso-session local"]["unknown"] = "injected"
+			case "metadata":
+				up["sso-session local"]["sso_region"] = "other"
+			case "render":
+				up["profile dev"]["region"] = "injected\nvalue"
+				p := owned["dev"]
+				p.Region = "injected\nvalue"
+				owned["dev"] = p
+			}
+			if e := s.Apply(context.Background(), b, up, owned); e == nil {
+				t.Fatal("unsafe update accepted")
+			}
+			if _, e := os.Stat(s.Path); !os.IsNotExist(e) {
+				t.Fatal("invalid operation wrote config", e)
+			}
+		})
+	}
+}
+
+func TestC13NormalizedExistingSessionURL(t *testing.T) {
+	s, _, up, owned := fixture(t)
+	os.MkdirAll(filepath.Dir(s.Path), 0700)
+	old := "[sso-session local]\nsso_start_url = https://example.invalid/start/\nsso_region = us-east-1\n"
+	if e := os.WriteFile(s.Path, []byte(old), 0600); e != nil {
+		t.Fatal(e)
+	}
+	delete(up, "sso-session local")
+	b, e := s.Read()
+	if e != nil {
+		t.Fatal(e)
+	}
+	if e = s.Apply(context.Background(), b, up, owned); e != nil {
+		t.Fatal("normalized matching session rejected", e)
+	}
+	got, _ := os.ReadFile(s.Path)
+	if !strings.HasPrefix(string(got), old) {
+		t.Fatal("matching session rewritten")
+	}
 }
