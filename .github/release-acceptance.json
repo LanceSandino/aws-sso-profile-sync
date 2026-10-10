@@ -2,7 +2,7 @@
   "schema_version": 1,
   "version": "2.0.0",
   "status": "PASS",
-  "source_fingerprint": "sha256:01d97818240b99fd37b57366e396a400555e101ceb2ebf2c2f8e22ccee607c02",
+  "source_fingerprint": "sha256:3b01a75803f27c3a1226ec44f7675e50653d05a069b0300bbb5f05e7b26b9d37",
   "real_aws_acceptance": {
     "R01": "PASS",
     "R02": "PASS",
@@ -14,5 +14,5 @@
     "R08": "PASS",
     "R09": "PASS"
   },
-  "notes": "Fresh owner-authorized R01-R09 passed on final stable source 93a5475, version 2.0.0 and its release-flag binary. Independent AWS CLI full account/role discovery matched; generated identity, repeat sync, eight preservation/settings read-only plans, forced copied-token expiry with real refresh, two named sessions and two profile regions at one provider region, and private recovery evidence passed. Original work checkout/configuration/adjacent state were preserved; no IAM mutations or personal CLI cache import. Natural expiry, other tenants/partitions and other provider regions were not certified. Owner authorizes conditional merge, verified stable publication and public Homebrew validation."
+  "notes": "Fresh owner-authorized R01-R09 passed on final stable source 93a5475, version 2.0.0 and its release-flag binary. Independent AWS CLI full account/role discovery matched; generated identity, repeat sync, eight preservation/settings read-only plans, forced copied-token expiry with real refresh, two named sessions and two profile regions at one provider region, and private recovery evidence passed. Original work checkout/configuration/adjacent state were preserved; no IAM mutations or personal CLI cache import. Natural expiry, other tenants/partitions and other provider regions were not certified. Owner authorizes conditional merge, verified stable publication and public Homebrew validation. After the nonshipping integration readiness correction f021047, all four rebuilt application binaries and every shipping payload file were verified byte-identical to the accepted native artifacts from run 38033340717. Production source, dependencies, version, documentation and packaging scripts are unchanged. Actual AWS observations retain source 93a5475 provenance; this is binary-equivalence verification, not a new AWS run. Accepted Darwin ARM binary SHA256: 00c6bb5bc91558341ee3c06ef85b6fbadef52ef245786a3ba8e2f01a8020da4e."
 }
