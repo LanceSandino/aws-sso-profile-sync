@@ -32,4 +32,13 @@ go.work.sum
 # .vscode/
 
 # Built binary
-aws-sso-profile-sync
+/aws-sso-profile-sync
+
+/dist/
+/quality/runs/
+.env.*
+.DS_Store
+
+__pycache__/
+*.pyc
+/release-work/

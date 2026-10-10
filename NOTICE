@@ -1,0 +1,15 @@
+AWS SSO Profile Sync
+Copyright 2026 Lance Sandino
+Licensed under the Apache License, Version 2.0.
+
+The release binary includes AWS SDK for Go and Smithy Go components.
+Upstream attribution notices follow verbatim; full dependency license texts
+are distributed in THIRD_PARTY_NOTICES.md.
+
+AWS SDK for Go upstream NOTICE.txt:
+AWS SDK for Go
+Copyright 2015 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+Copyright 2014-2015 Stripe, Inc.
+
+Smithy Go upstream NOTICE:
+Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
