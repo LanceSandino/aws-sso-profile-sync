@@ -1,6 +1,8 @@
 package configstore
 
 import (
+	"os"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -25,6 +27,28 @@ func TestC01NestedAndInlineComments(t *testing.T) {
 	for _, up := range []map[string]map[string]string{{"bad\nname": {"k": "v"}}, {"profile p": {"bad key": "v"}}, {"profile p": {"k": "bad\nvalue"}}} {
 		if _, e = render(nil, up); e == nil {
 			t.Fatal("accepted injection")
+		}
+	}
+}
+
+func TestC07OnlySystemAliasesAllowed(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		return
+	}
+	root, e := os.MkdirTemp("/private/tmp", "aws-sso-alias-")
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer os.RemoveAll(root)
+	s := Store{Path: strings.Replace(root, "/private/tmp", "/tmp", 1) + "/config"}
+	if _, e = s.Read(); e != nil {
+		t.Fatal("system tmp alias refused", e)
+	}
+	canonical := tempRoot(t)
+	if strings.HasPrefix(canonical, "/private/var/") {
+		s.Path = strings.Replace(canonical, "/private/var", "/var", 1) + "/config"
+		if _, e = s.Read(); e != nil {
+			t.Fatal("system var alias refused", e)
 		}
 	}
 }

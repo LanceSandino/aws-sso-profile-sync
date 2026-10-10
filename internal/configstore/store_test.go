@@ -1,6 +1,9 @@
 package configstore
 
 import (
+	"github.com/LanceSandino/aws-sso-profile-sync/internal/domain"
+	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -29,5 +32,41 @@ func TestC02PreviewRejectsValueSemanticInjection(t *testing.T) {
 		if _, e := Preview(before, map[string]map[string]string{"profile synthetic": {"sso_role_name": v}}); e == nil {
 			t.Fatal("preview accepted a value that INI interprets differently")
 		}
+	}
+}
+
+func tempRoot(t *testing.T) string {
+	t.Helper()
+	p, e := filepath.EvalSymlinks(t.TempDir())
+	if e != nil {
+		t.Fatal(e)
+	}
+	return p
+}
+
+func fixture(t *testing.T) (Store, Snapshot, map[string]map[string]string, map[string]domain.Profile) {
+	t.Helper()
+	path := filepath.Join(tempRoot(t), "aws", "config")
+	t.Setenv("HOME", filepath.Dir(filepath.Dir(path)))
+	s := Store{Path: path}
+	b, e := s.Read()
+	if e != nil {
+		t.Fatal(e)
+	}
+	p := domain.Profile{Name: "dev", Session: domain.Session{Name: "local", StartURL: "https://example.invalid/start", Region: "us-east-1"}, Assignment: domain.Assignment{AccountID: "111111111111", RoleName: "ReadOnly"}, Region: "us-west-2", Output: "json"}
+	return s, b, map[string]map[string]string{"profile dev": {"sso_session": "local", "sso_account_id": "111111111111", "sso_role_name": "ReadOnly", "region": "us-west-2", "output": "json"}, "sso-session local": {"sso_start_url": p.Session.StartURL, "sso_region": "us-east-1", "sso_registration_scopes": "sso:account:access"}}, map[string]domain.Profile{"dev": p}
+}
+
+func TestC07Symlinks(t *testing.T) {
+	s, _, _, _ := fixture(t)
+	target := tempRoot(t)
+	os.Symlink(target, filepath.Dir(s.Path))
+	if _, e := s.Read(); e == nil {
+		t.Fatal("accepted parent link")
+	}
+	s.Path = filepath.Join(tempRoot(t), "config")
+	os.Symlink(filepath.Join(target, "config"), s.Path)
+	if _, e := s.Read(); e == nil {
+		t.Fatal("accepted file link")
 	}
 }
