@@ -1,18 +1,31 @@
 {
   "schema_version": 1,
   "version": "2.0.0-rc.1",
-  "status": "PENDING",
-  "source_fingerprint": "PENDING",
+  "status": "PASS",
+  "source_fingerprint": "sha256:066b4de598d6dc5c3848824f1331c71fed5ca7c015776e6cb6a3ca0c83b522e9",
+  "tested_source_commit": "4a56066cbb3086625ad1c5a87643a50c2106b1d1",
   "real_aws_acceptance": {
-    "R01": "NOT_RUN",
-    "R02": "NOT_RUN",
-    "R03": "NOT_RUN",
-    "R04": "NOT_RUN",
-    "R05": "NOT_RUN",
-    "R06": "NOT_RUN",
-    "R07": "NOT_RUN",
-    "R08": "NOT_RUN",
-    "R09": "NOT_RUN"
+    "R01": "PASS",
+    "R02": "PASS",
+    "R03": "PASS",
+    "R04": "PASS",
+    "R05": "PASS",
+    "R06": "PASS",
+    "R07": "PASS",
+    "R08": "PASS",
+    "R09": "PASS"
   },
-  "notes": "Real AWS operator acceptance is pending. Local emulator validation does not authorize a release."
+  "scope": {
+    "provider_sso_regions": 1,
+    "named_contexts": 2,
+    "profile_regions": 2,
+    "multiple_actual_roles": true,
+    "valid_tool_session_reused": true,
+    "valid_aws_cli_session_reused": true,
+    "original_config_preserved": true,
+    "natural_token_expiry_observed": false,
+    "other_tenants_or_partitions_certified": false,
+    "personal_token_cache_imported": false
+  },
+  "notes": "Owner-authorized real AWS acceptance completed using private configuration copies and run-owned caches. The final release-flag binary passed all nine cases; independent AWS CLI discovery matched full account-role visibility. Region/output preservation, explicit overrides, manual aliases, collisions and optional settings precedence also passed. Tool and AWS CLI caches remain separate, and valid sessions in each were reused. Device authorization was also exercised before the message-only correction, with unchanged auth modules. R07 forces expiry only in owned token state and exercises real refresh; natural expiry was not observed. One provider SSO region, two named contexts and two profile regions were exercised. Raw identifiers, credentials and logs stay private. Merging, version tagging and publication remain owner-held."
 }
