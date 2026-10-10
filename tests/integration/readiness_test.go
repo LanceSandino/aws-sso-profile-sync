@@ -106,9 +106,16 @@ func TestFlociHTTPReadiness(t *testing.T) {
 			w.WriteHeader(http.StatusServiceUnavailable)
 		}))
 		defer server.Close()
-		ctx, cancel := context.WithCancel(context.Background())
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
-		go func() { <-called; time.Sleep(20 * time.Millisecond); cancel() }()
+		go func() {
+			select {
+			case <-called:
+				time.Sleep(20 * time.Millisecond)
+				cancel()
+			case <-ctx.Done():
+			}
+		}()
 		started := time.Now()
 		_, err := waitForSSOReady(ctx, ssoadmin.NewFromConfig(localConfig(server.URL)))
 		if !errors.Is(err, context.Canceled) || attempts.Load() != 1 || time.Since(started) > time.Second {
