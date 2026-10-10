@@ -81,7 +81,7 @@ func Build(s configstore.Snapshot, assignments []domain.Assignment, o Options) (
 	}
 	available := map[string]bool{}
 	for _, a := range assignments {
-		if !regexp.MustCompile(`^[0-9]{12}$`).MatchString(a.AccountID) || a.RoleName == "" || strings.ContainsAny(a.RoleName, "\r\n\x1b[]=;") {
+		if !regexp.MustCompile(`^[0-9]{12}$`).MatchString(a.AccountID) || a.RoleName == "" || strings.ContainsAny(a.RoleName, "\r\n\x1b[];") {
 			return p, domain.Fail("config_invalid", "invalid discovered account or role")
 		}
 		available[a.RoleName] = true

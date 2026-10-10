@@ -31,7 +31,7 @@ import (
 // Release 2.2.0, source revision 17c99047b92b5729b356f3584513cd6ed598b8a9.
 const flociImage = "floci/floci:2.2.0@sha256:e97cd0c1dc2aa14e7697fb5ef5018404c4d6345169dbd276315f0bed2c7b0520"
 const fixtureRevision = "sso-direct-group-v1"
-const readRole = "AWSReadOnlyAccess"
+const readRole = "Team=ReadOnly"
 const powerRole = "AWSPowerUserAccess"
 
 type fixture struct{ endpoint, principal string }
@@ -159,7 +159,11 @@ func seedFixture(t *testing.T) fixture {
 			t.Fatal(err)
 		}
 		if role != "UnassignedRole" {
-			_, err = admin.AttachManagedPolicyToPermissionSet(ctx, &ssoadmin.AttachManagedPolicyToPermissionSetInput{InstanceArn: instance.InstanceArn, PermissionSetArn: ps.PermissionSet.PermissionSetArn, ManagedPolicyArn: aws.String("arn:aws:iam::aws:policy/" + role)})
+			policy := role
+			if role == readRole {
+				policy = "AWSReadOnlyAccess"
+			}
+			_, err = admin.AttachManagedPolicyToPermissionSet(ctx, &ssoadmin.AttachManagedPolicyToPermissionSetInput{InstanceArn: instance.InstanceArn, PermissionSetArn: ps.PermissionSet.PermissionSetArn, ManagedPolicyArn: aws.String("arn:aws:iam::aws:policy/" + policy)})
 			if err != nil {
 				t.Fatal(err)
 			}

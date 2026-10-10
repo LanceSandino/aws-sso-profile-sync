@@ -17,6 +17,7 @@ Release notes describe user-visible changes, newest first.
 
 ### Fixed
 
+- Valid permission-set role names containing `=` now work with command-line and settings-based role selection.
 - Malformed configuration and failed writes no longer produce destructive fallbacks or false success.
 - Preview commands never log in, open a browser or write token caches.
 - Role and account collisions, unmanaged profile takeover and conflicting named sessions are refused.

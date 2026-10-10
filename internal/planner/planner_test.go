@@ -1,6 +1,7 @@
 package planner
 
 import (
+	"fmt"
 	"github.com/LanceSandino/aws-sso-profile-sync/internal/configstore"
 	"github.com/LanceSandino/aws-sso-profile-sync/internal/domain"
 	"reflect"
@@ -171,6 +172,38 @@ func TestP01DuplicateOwnedIdentityAndUnsafeRoleFail(t *testing.T) {
 	a = append(a, bad)
 	if _, e := Build(s, a, o); domain.ErrorCode(e) != "config_invalid" {
 		t.Fatal(e)
+	}
+}
+
+func TestRoleNamesWithEqualsRemainExact(t *testing.T) {
+	for _, role := range []string{"Team=ReadOnly", "Team+=,.@-ReadOnly"} {
+		for _, explicit := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/explicit=%t", role, explicit), func(t *testing.T) {
+				s, a, o := setup()
+				a[0].RoleName = role
+				if explicit {
+					o.Roles = []string{role}
+				}
+				plan, err := Build(s, a, o)
+				if err != nil || len(plan.Results) != 1 {
+					t.Fatalf("valid assigned role rejected: %+v %v", plan, err)
+				}
+				profile := plan.Results[0].Profile
+				if profile.Assignment.RoleName != role || plan.Sections["profile "+profile.Name]["sso_role_name"] != role {
+					t.Fatalf("role value changed: %+v", plan)
+				}
+			})
+		}
+	}
+}
+
+func TestRoleNamesWithEqualsStillRejectConfigInjection(t *testing.T) {
+	for _, role := range []string{"Team=ReadOnly\nregion=evil", "Team=ReadOnly\rregion=evil", "Team=ReadOnly\x1b", "Team=[default]", "Team=ReadOnly;comment"} {
+		s, a, o := setup()
+		a[0].RoleName = role
+		if _, err := Build(s, a, o); domain.ErrorCode(err) != "config_invalid" {
+			t.Fatalf("unsafe role accepted: %q %v", role, err)
+		}
 	}
 }
 

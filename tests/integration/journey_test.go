@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/LanceSandino/aws-sso-profile-sync/internal/configstore"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sso"
 )
@@ -76,6 +77,14 @@ func TestFlociCLIJourney(t *testing.T) {
 		}
 	})
 	t.Run("F04_CompiledDiscoverPlanSync", func(t *testing.T) {
+		settingsPath := filepath.Join(c.root, "settings.json")
+		settingsData, err := json.Marshal(map[string]any{"schema_version": 1, "contexts": map[string]any{"sample": map[string]any{"roles": []string{readRole, powerRole}}}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(settingsPath, settingsData, 0600); err != nil {
+			t.Fatal(err)
+		}
 		before := snapshotRoot(t, c.root)
 		discover := c.run(t, "discover")
 		mustSuccess(t, discover)
@@ -91,10 +100,15 @@ func TestFlociCLIJourney(t *testing.T) {
 		if len(plan.data.Results) != 4 {
 			t.Fatal("plan does not contain four profiles")
 		}
+		configuredPlan := c.run(t, "plan", "--settings-file", settingsPath, "--region", "eu-west-2")
+		mustSuccess(t, configuredPlan)
+		if !reflect.DeepEqual(plan.data.Results, configuredPlan.data.Results) {
+			t.Fatal("settings role selection differs from explicit flags")
+		}
 		if !reflect.DeepEqual(before, snapshotRoot(t, c.root)) {
 			t.Fatal("discover/plan wrote files/cache/state")
 		}
-		sync = c.run(t, "sync", "--role", readRole, "--role", powerRole, "--region", "eu-west-2")
+		sync = c.run(t, "sync", "--settings-file", settingsPath, "--region", "eu-west-2")
 		mustSuccess(t, sync)
 		if sync.data.Counts["created"] != 4 {
 			t.Fatalf("created count=%d", sync.data.Counts["created"])
@@ -103,9 +117,16 @@ func TestFlociCLIJourney(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		sections, err := configstore.Parse(bytes)
+		if err != nil {
+			t.Fatal(err)
+		}
 		for _, r := range sync.data.Results {
 			if r.Status != "created" || !strings.Contains(string(bytes), "[profile "+r.Profile.Name+"]") || r.Profile.Region != "eu-west-2" {
 				t.Fatal("saved profiles disagree with results/region")
+			}
+			if sections["profile "+r.Profile.Name]["sso_role_name"] != r.Profile.Assignment.RoleName {
+				t.Fatal("saved role differs from discovered permission-set name")
 			}
 		}
 		if !strings.Contains(string(bytes), "[sso-session sample]") {

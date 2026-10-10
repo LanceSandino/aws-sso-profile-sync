@@ -132,7 +132,7 @@ func validate(c Context) bool {
 	}
 	if c.Roles != nil {
 		for _, role := range *c.Roles {
-			if strings.TrimSpace(role) == "" || !plain(role) || strings.ContainsAny(role, "=;") {
+			if strings.TrimSpace(role) == "" || !plain(role) || strings.ContainsAny(role, ";") {
 				return false
 			}
 		}

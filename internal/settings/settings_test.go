@@ -2,6 +2,7 @@ package settings
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -102,6 +103,35 @@ func TestSettingsInvalidContentIsRedacted(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+func TestSettingsRoleNamesWithEqualsRemainExact(t *testing.T) {
+	for _, role := range []string{"Team=ReadOnly", "Team+=,.@-ReadOnly"} {
+		t.Run(role, func(t *testing.T) {
+			roles, err := json.Marshal([]string{role})
+			if err != nil {
+				t.Fatal(err)
+			}
+			path := settingsFile(t, `{"schema_version":1,"contexts":{"work":{"roles":`+string(roles)+`}}}`)
+			context, err := Load(path, "work")
+			if err != nil || context.Roles == nil || !reflect.DeepEqual(*context.Roles, []string{role}) {
+				t.Fatalf("valid settings role changed or rejected: %+v %v", context, err)
+			}
+		})
+	}
+}
+
+func TestSettingsRoleNamesWithEqualsStillRejectConfigInjection(t *testing.T) {
+	for _, role := range []string{"Team=ReadOnly\nregion=evil", "Team=ReadOnly\rregion=evil", "Team=ReadOnly\x1b", "Team=[default]", "Team=ReadOnly;comment"} {
+		roles, err := json.Marshal([]string{role})
+		if err != nil {
+			t.Fatal(err)
+		}
+		path := settingsFile(t, `{"schema_version":1,"contexts":{"work":{"roles":`+string(roles)+`}}}`)
+		if _, err := Load(path, "work"); domain.ErrorCode(err) != "config_invalid" {
+			t.Fatalf("unsafe settings role accepted: %q %v", role, err)
+		}
+	}
+}
+
 func TestSettingsFileSafety(t *testing.T) {
 	path := settingsFile(t, `{"schema_version":1,"contexts":{"a":{}}}`)
 	if _, err := Load(path+".missing", ""); err == nil {

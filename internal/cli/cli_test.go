@@ -147,6 +147,15 @@ func TestP10ResolveSessionRegion(t *testing.T) {
 	}
 }
 func TestLocalCLIJourneyP08P09A08(t *testing.T) {
+	testLocalCLIJourney(t, "AWSReadOnlyAccess")
+}
+
+func TestLocalCLIJourneyRoleNamesWithEquals(t *testing.T) {
+	testLocalCLIJourney(t, "Team=ReadOnly")
+}
+
+func testLocalCLIJourney(t *testing.T, role string) {
+	t.Helper()
 	root := env(t)
 	calls := 0
 	invalid := false
@@ -162,7 +171,9 @@ func TestLocalCLIJourneyP08P09A08(t *testing.T) {
 		case "/assignment/accounts":
 			fmt.Fprint(w, `{"accountList":[{"accountId":"111111111111","accountName":"Sample Dev"}]}`)
 		case "/assignment/roles":
-			fmt.Fprint(w, `{"roleList":[{"roleName":"AWSReadOnlyAccess"}]}`)
+			if err := json.NewEncoder(w).Encode(map[string]any{"roleList": []map[string]string{{"roleName": role}}}); err != nil {
+				t.Error(err)
+			}
 		default:
 			t.Errorf("unexpected endpoint %s", r.URL.Path)
 			w.WriteHeader(400)
@@ -175,7 +186,7 @@ func TestLocalCLIJourneyP08P09A08(t *testing.T) {
 		t.Fatal(err)
 	}
 	cacheBefore, _ := os.ReadFile(tokenStore.Path())
-	settingsPath := writeSettings(t, root, `{"schema_version":1,"contexts":{"sample":{"sso_start_url":"https://sample.invalid/start","sso_session_name":"sample","region":"us-east-2","roles":["AWSReadOnlyAccess"],"config_file":".aws/config","state_dir":".aws-sso-profile-sync"}}}`)
+	settingsPath := writeSettings(t, root, `{"schema_version":1,"contexts":{"sample":{"sso_start_url":"https://sample.invalid/start","sso_session_name":"sample","region":"us-east-2","roles":["`+role+`"],"config_file":".aws/config","state_dir":".aws-sso-profile-sync"}}}`)
 	configuredPlan, _, configuredCode := run(t, "plan", "--settings-file", settingsPath, "--test-root", root, "--test-endpoint", server.URL, "--format", "json")
 	if configuredCode != 0 || len(configuredPlan.Results) != 1 || configuredPlan.Results[0].Status != "created" || !strings.Contains(configuredPlan.Explanation, "settings context") {
 		t.Fatal("configured context did not drive isolated plan", configuredPlan)
@@ -196,7 +207,11 @@ func TestLocalCLIJourneyP08P09A08(t *testing.T) {
 		t.Fatal(code, e)
 	}
 	configBefore, _ := os.ReadFile(root + "/.aws/config")
-	e, _, code = run(t, append([]string{"sync"}, base...)...)
+	sections, err := configstore.Parse(configBefore)
+	if err != nil || sections["profile "+e.Results[0].Profile.Name]["sso_role_name"] != role {
+		t.Fatal("saved role failed exact configuration round trip", err, sections)
+	}
+	e, _, code = run(t, "sync", "--settings-file", settingsPath, "--test-root", root, "--test-endpoint", server.URL, "--format", "json")
 	configAfter, _ := os.ReadFile(root + "/.aws/config")
 	if code != 0 || e.Counts["unchanged"] != 1 || !bytes.Equal(configBefore, configAfter) {
 		t.Fatal(code, e)
@@ -248,7 +263,7 @@ func TestLocalCLIJourneyP08P09A08(t *testing.T) {
 		t.Fatal("explicit managed-region override not planned", e)
 	}
 	// Identity edits still block synchronization, even with override authorization.
-	os.WriteFile(root+"/.aws/config", bytes.ReplaceAll(configBefore, []byte("sso_role_name = AWSReadOnlyAccess"), []byte("sso_role_name = PowerUser")), 0600)
+	os.WriteFile(root+"/.aws/config", bytes.ReplaceAll(configBefore, []byte("sso_role_name = "+role), []byte("sso_role_name = PowerUser")), 0600)
 	e, _, code = run(t, append([]string{"sync", "--override-profile-settings"}, base...)...)
 	if code == 0 || e.Counts["conflict"] != 1 {
 		t.Fatal(e)
