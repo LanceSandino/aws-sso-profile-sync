@@ -1,0 +1,124 @@
+name: Candidate formula validation
+on:
+  pull_request:
+  push:
+    branches: [main, 'feature/**']
+  workflow_dispatch:
+    inputs:
+      app_ref:
+        description: Application source commit or review branch available to this runner
+        default: feature/release-review
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: homebrew-candidate-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  candidate:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm, macos-15-intel, macos-15]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    env:
+      HOMEBREW_NO_AUTO_UPDATE: '1'
+      HOMEBREW_NO_INSTALL_FROM_API: '1'
+    steps:
+      - name: Use runner-owned Go caches
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'GOCACHE=%s/go-build\nGOMODCACHE=%s/go-mod\n' "$RUNNER_TEMP" "$RUNNER_TEMP" >> "$GITHUB_ENV"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Set up Homebrew for the private tap
+        uses: Homebrew/actions/setup-homebrew@fccef3b26268fc4a788fd7ad7c189f3a105cbf13
+        timeout-minutes: 5
+        with:
+          token: ${{ github.token }}
+          stable: true
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: LanceSandino/aws-sso-profile-sync
+          ref: ${{ inputs.app_ref || vars.APP_SOURCE_REF || 'feature/release-review' }}
+          path: application
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version: '1.27.1'
+          cache: false
+      - name: Build four isolated candidate archives and generate formula
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd application
+          /bin/bash -n scripts/package.sh
+          TARGETS='darwin/amd64 darwin/arm64 linux/amd64 linux/arm64' /bin/bash scripts/package.sh
+          python3 -m unittest discover -s tests/distribution -p test_homebrew.py
+          python3 scripts/homebrew.py --version-file VERSION --dist-dir "dist/$(cat VERSION)" --output ../Formula/aws-sso-profile-sync.rb
+      - name: Style and audit the exact generated public formula
+        shell: bash
+        run: |
+          set -euo pipefail
+          tap_root=$(brew --repository LanceSandino/tap)
+          mkdir -p "$tap_root/Formula"
+          cp Formula/aws-sso-profile-sync.rb "$tap_root/Formula/"
+          if brew command trust >/dev/null 2>&1; then
+            brew trust --formula LanceSandino/tap/aws-sso-profile-sync
+          fi
+          brew style "$tap_root/Formula/aws-sso-profile-sync.rb"
+          brew audit --strict LanceSandino/tap/aws-sso-profile-sync
+      - name: Verify native Homebrew preserves release and build metadata versions
+        shell: bash
+        run: |
+          set -euo pipefail
+          tap_root=$(brew --repository LanceSandino/tap)
+          python3 - "$tap_root/Formula/aws-sso-profile-sync.rb" "$(cat application/VERSION)" <<'PY'
+          import json, pathlib, subprocess, sys
+          formula=pathlib.Path(sys.argv[1]); release=sys.argv[2]; original=formula.read_text()
+          try:
+              for expected in (release, '1.2.3-rc.1+build.01', '2.0.0-preview.04', '2.0.0-123'):
+                  formula.write_text(original.replace(release, expected))
+                  result=subprocess.run(['brew', 'info', '--json=v2', 'LanceSandino/tap/aws-sso-profile-sync'],
+                                        capture_output=True, text=True, timeout=30, check=True)
+                  actual=json.loads(result.stdout)['formulae'][0]['versions']['stable']
+                  if actual != expected: raise SystemExit('Homebrew did not preserve exact SemVer')
+          finally:
+              formula.write_text(original)
+          PY
+      - name: Install candidate via loopback archives and run offline formula test
+        shell: bash
+        run: |
+          set -euo pipefail
+          candidate="$GITHUB_WORKSPACE/application/dist/$(cat application/VERSION)"
+          port_file="$RUNNER_TEMP/homebrew-candidate-port"
+          python3 - "$candidate" "$port_file" <<'PY' &
+          import http.server, os, pathlib, sys
+          os.chdir(sys.argv[1])
+          server=http.server.ThreadingHTTPServer(('127.0.0.1', 0), http.server.SimpleHTTPRequestHandler)
+          pathlib.Path(sys.argv[2]).write_text(str(server.server_port))
+          server.serve_forever()
+          PY
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true; wait "$server_pid" 2>/dev/null || true' EXIT
+          python3 - "$port_file" <<'PY'
+          import pathlib, sys, time
+          path=pathlib.Path(sys.argv[1]); deadline=time.monotonic()+5
+          while not path.exists() or not path.stat().st_size:
+              if time.monotonic() >= deadline: raise SystemExit('Candidate HTTP server did not start')
+              time.sleep(0.1)
+          PY
+          tap_root=$(brew --repository LanceSandino/tap)
+          python3 - "$tap_root/Formula/aws-sso-profile-sync.rb" "$port_file" <<'PY'
+          import pathlib, re, sys
+          formula=pathlib.Path(sys.argv[1]); port=int(pathlib.Path(sys.argv[2]).read_text())
+          text,count=re.subn(r'https://github\.com/LanceSandino/aws-sso-profile-sync/releases/download/v[^/"\s]+/(aws-sso-profile-sync_[^/"\s]+\.tar\.gz)', lambda m: 'http://127.0.0.1:'+str(port)+'/'+m[1], formula.read_text())
+          if count != 4: raise SystemExit('Expected four exact candidate archive URLs')
+          formula.write_text(text)
+          PY
+          brew install --formula LanceSandino/tap/aws-sso-profile-sync
+          brew test LanceSandino/tap/aws-sso-profile-sync
