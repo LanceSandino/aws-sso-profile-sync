@@ -100,6 +100,7 @@ jobs:
           set -euo pipefail
           candidate="$GITHUB_WORKSPACE/application/dist/$(cat application/VERSION)"
           port_file="$RUNNER_TEMP/homebrew-candidate-port"
+          rm -f "$port_file"
           python3 - "$candidate" "$port_file" <<'PY' &
           import http.server, os, pathlib, sys
           os.chdir(sys.argv[1])
@@ -109,11 +110,14 @@ jobs:
           PY
           server_pid=$!
           trap 'kill "$server_pid" 2>/dev/null || true; wait "$server_pid" 2>/dev/null || true' EXIT
-          python3 - "$port_file" <<'PY'
-          import pathlib, sys, time
-          path=pathlib.Path(sys.argv[1]); deadline=time.monotonic()+5
-          while not path.exists() or not path.stat().st_size:
-              if time.monotonic() >= deadline: raise SystemExit('Candidate HTTP server did not start')
+          python3 - "$port_file" "$server_pid" <<'PY'
+          import os, pathlib, sys, time
+          path=pathlib.Path(sys.argv[1]); pid=int(sys.argv[2]); deadline=time.monotonic()+30
+          while True:
+              try: os.kill(pid, 0)
+              except ProcessLookupError: raise SystemExit('Candidate HTTP server exited before readiness')
+              if path.exists() and path.stat().st_size: break
+              if time.monotonic() >= deadline: raise SystemExit('Candidate HTTP server did not start within 30 seconds')
               time.sleep(0.1)
           PY
           tap_root=$(brew --repository LanceSandino/tap)

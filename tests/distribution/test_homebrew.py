@@ -9,6 +9,9 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import threading
+import time
+from unittest.mock import patch
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -109,6 +112,48 @@ class HomebrewWorkflow(unittest.TestCase):
                 self.assertEqual((tap / "Formula/aws-sso-profile-sync.rb").read_bytes(), source.read_bytes())
                 self.assertEqual(source.stat().st_mtime_ns, 1600000000000000000)
                 self.assertEqual(log.read_text().splitlines(), ["style", "audit", "style", "audit"])
+
+    def candidate_readiness_script(self):
+        workflow = (ROOT / "packaging/homebrew/tap/.github/workflows/candidate.yml").read_text()
+        match = re.search(r"          python3 - \"\$port_file\"(?: \"\$server_pid\")? <<'PY'\n(.*?)          PY", workflow, re.S)
+        self.assertIsNotNone(match, "bounded candidate readiness script missing")
+        return "\n".join(line[10:] for line in match[1].splitlines())
+
+    def test_candidate_readiness_accepts_startup_after_five_seconds(self):
+        script = self.candidate_readiness_script()
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "port"
+            timer = threading.Timer(5.2, path.write_text, args=("12345",))
+            timer.start()
+            try:
+                env = {"PATH": os.environ["PATH"], "HOME": directory}
+                result = subprocess.run([sys.executable, "-c", script, str(path), str(os.getpid())],
+                                        env=env, capture_output=True, text=True, timeout=8)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(path.read_text(), "12345")
+            finally:
+                timer.cancel()
+                timer.join(timeout=1)
+
+    def test_candidate_readiness_fails_fast_if_owned_server_exits(self):
+        script = self.candidate_readiness_script()
+        with tempfile.TemporaryDirectory() as directory:
+            env = {"PATH": os.environ["PATH"], "HOME": directory}
+            server = subprocess.Popen([sys.executable, "-c", "pass"], env=env)
+            server.wait(timeout=2)
+            result = subprocess.run([sys.executable, "-c", script, str(Path(directory) / "port"), str(server.pid)],
+                                    env=env, capture_output=True, text=True, timeout=2)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("Candidate HTTP server exited before readiness", result.stderr)
+
+    def test_candidate_readiness_has_thirty_second_deadline(self):
+        script = self.candidate_readiness_script()
+        with tempfile.TemporaryDirectory() as directory:
+            args = ["candidate-readiness", str(Path(directory) / "port"), str(os.getpid())]
+            with patch.object(sys, "argv", args), patch("time.monotonic", side_effect=[100, 129.9, 130]), patch("time.sleep") as sleep:
+                with self.assertRaisesRegex(SystemExit, "Candidate HTTP server did not start within 30 seconds"):
+                    exec(compile(script, "<candidate-readiness>", "exec"), {})
+                sleep.assert_called_once_with(0.1)
 
     def test_scoped_global_git_config_prevents_duplicate_authorization(self):
         with tempfile.TemporaryDirectory() as directory:
