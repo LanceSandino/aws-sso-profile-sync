@@ -194,7 +194,7 @@ func authorize(before Snapshot, updates map[string]map[string]string, owned map[
 		}
 		if exists {
 			prior, ok := before.Owned[name]
-			if !ok || prior.Identity() != p.Identity() || !identityMatches(existing, prior) || existing["region"] != prior.Region || existing["output"] != prior.Output {
+			if !ok || prior.Identity() != p.Identity() || !identityMatches(existing, prior) {
 				return domain.Fail("conflict", "existing profile is unowned or changed: "+name)
 			}
 		}
@@ -309,7 +309,13 @@ func (s Store) Apply(ctx context.Context, before Snapshot, updates map[string]ma
 		}
 		return nil
 	}
-	if e = atomic(p, data, mode, fault); e != nil {
+	if bytes.Equal(data, current.Data) {
+		// Reconcile externally edited mutable settings in ownership metadata only.
+		// Retain the last digest/cancellation guard without replacing the config.
+		if e = fault("rename"); e != nil {
+			return e
+		}
+	} else if e = atomic(p, data, mode, fault); e != nil {
 		b, readErr := readFile(p)
 		if readErr != nil || digest(b) == st.Hash {
 			return domain.Fail("failed", "commit state uncertain; inspect config/intent before retry")

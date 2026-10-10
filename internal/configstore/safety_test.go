@@ -309,10 +309,10 @@ func TestC13OwnershipIntentGuards(t *testing.T) {
 	if e := s.Apply(context.Background(), b, up, changed); e == nil {
 		t.Fatal("identity rebind")
 	}
-	os.WriteFile(s.Path, []byte(strings.ReplaceAll(string(b.Data), "region = us-west-2", "region = changed")), 0600)
+	os.WriteFile(s.Path, []byte(strings.ReplaceAll(string(b.Data), "sso_role_name = ReadOnly", "sso_role_name = changed")), 0600)
 	b, _ = s.Read()
 	if e := s.Apply(context.Background(), b, up, owned); e == nil {
-		t.Fatal("external region overwritten")
+		t.Fatal("external identity overwritten")
 	}
 }
 
