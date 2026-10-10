@@ -2,6 +2,7 @@
 import hashlib
 import io
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -35,6 +36,9 @@ def homebrew_workflow_policy(text):
     for index in checkouts:
         if not re.search(r"^          persist-credentials: false$", steps[index], re.M):
             raise ValueError("Checkout credentials must not persist")
+    if not re.search(r"^          GIT_CONFIG_GLOBAL: \$\{\{ runner\.temp \}\}/application-checkout\.gitconfig$",
+                     steps[apps[0]], re.M):
+        raise ValueError("Application checkout must isolate setup's global Git authentication header")
     if "brew tap --custom-remote" in text:
         raise ValueError("Setup already owns the canonical tap remote")
 
@@ -50,6 +54,7 @@ class HomebrewWorkflow(unittest.TestCase):
                          ("timeout-minutes: 5", "timeout-minutes: 99"),
                          ("stable: true", "stable: false"),
                          ("persist-credentials: false", "persist-credentials: true"),
+                         ("GIT_CONFIG_GLOBAL:", "REMOVED_GIT_CONFIG_GLOBAL:"),
                          ("Homebrew/actions/setup-homebrew@", "Removed/actions/setup-homebrew@")):
             with self.subTest(boundary=old), self.assertRaises(ValueError):
                 homebrew_workflow_policy(workflow.replace(old, new))
@@ -59,6 +64,22 @@ class HomebrewWorkflow(unittest.TestCase):
         steps[setup], steps[app] = steps[app], steps[setup]
         with self.assertRaises(ValueError):
             homebrew_workflow_policy(before + "".join("      - " + step for step in steps))
+
+    def test_scoped_global_git_config_prevents_duplicate_authorization(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            (home / ".gitconfig").write_text('[http "https://github.com/"]\n\textraheader = synthetic-global\n')
+            isolated = home / "application-checkout.gitconfig"
+            isolated.write_text("")
+            env = {"PATH": os.environ["PATH"], "HOME": str(home), "GIT_CONFIG_NOSYSTEM": "1"}
+            args = ["git", "-c", "http.https://github.com/.extraheader=synthetic-checkout",
+                    "config", "--get-all", "http.https://github.com/.extraheader"]
+            inherited = subprocess.run(args, env=env, capture_output=True, text=True, timeout=5, check=True)
+            self.assertEqual(inherited.stdout.splitlines(), ["synthetic-global", "synthetic-checkout"])
+            env["GIT_CONFIG_GLOBAL"] = str(isolated)
+            scoped = subprocess.run(args, env=env, capture_output=True, text=True, timeout=5, check=True)
+            self.assertEqual(scoped.stdout.splitlines(), ["synthetic-checkout"])
+            self.assertIn("synthetic-global", (home / ".gitconfig").read_text())
 
 
 class HomebrewFormula(unittest.TestCase):

@@ -42,6 +42,8 @@ jobs:
           token: ${{ github.token }}
           stable: true
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        env:
+          GIT_CONFIG_GLOBAL: ${{ runner.temp }}/application-checkout.gitconfig
         with:
           repository: LanceSandino/aws-sso-profile-sync
           ref: ${{ inputs.app_ref || vars.APP_SOURCE_REF || 'feature/release-review' }}

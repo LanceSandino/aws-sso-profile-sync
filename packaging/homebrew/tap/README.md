@@ -28,6 +28,8 @@ Homebrew setup runs before the application checkout, has a five-minute limit and
 uses the job's temporary repository token for this private tap. Both checkouts
 disable credential persistence; the official setup action removes its temporary
 Git authentication header during post-job cleanup.
+The application checkout uses a separate runner-owned global Git configuration
+so its authentication header does not duplicate the setup action's header.
 On Homebrew versions that support explicit trust, CI trusts only the generated
 application formula. The application source revision must be
 available to the runner; missing/private/inaccessible source fails the job. CI
