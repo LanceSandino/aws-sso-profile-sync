@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "version": "2.0.0-rc.1",
+  "version": "2.0.0",
   "status": "PENDING",
-  "source_fingerprint": "sha256:103db77eb3df0ccceee8da932e22aa7fd1e05efd39ca4be116dd85ee3f737b42",
+  "source_fingerprint": "sha256:6ff2e6184f5b94cc31afbc80b9f1a995f945b0bbd6d31a22a6e7e768a82bf6cc",
   "real_aws_acceptance": {
     "R01": "NOT_RUN",
     "R02": "NOT_RUN",
@@ -14,5 +14,5 @@
     "R08": "NOT_RUN",
     "R09": "NOT_RUN"
   },
-  "notes": "The previous candidate passed owner-authorized real AWS acceptance before the equals-sign role-name correction. That earlier evidence remains bound to its tested source. Current source requires renewed R01-R09 acceptance before release; no real AWS acceptance has been run for this corrected build. Stable version promotion, merging, version tagging and publication remain owner-held."
+  "notes": "Stable 2.0.0 requires fresh R01-R09 acceptance for this source, including the role-name correction and final release configuration. Owner authorizes merge after green validation and resolved review comments, then verified stable publication and public Homebrew installation. Earlier candidate evidence remains historical."
 }
