@@ -47,7 +47,7 @@ func run(t *testing.T, args ...string) (Envelope, string, int) {
 func TestL01L02L03CLI(t *testing.T) {
 	env(t)
 	var out, err bytes.Buffer
-	if code := Run(context.Background(), []string{"--help"}, &out, &err); code != 0 || !strings.Contains(err.String(), "login") {
+	if code := Run(context.Background(), []string{"--help"}, &out, &err); code != 0 || !strings.Contains(err.String(), "AWS CLI uses its own SSO cache; sign in with aws sso login when needed.") {
 		t.Fatal(code, err.String())
 	}
 	e, _, code := run(t, "--version", "--format", "json")
@@ -213,10 +213,18 @@ func TestLocalCLIJourneyP08P09A08(t *testing.T) {
 	if code != 0 || len(e.Results) != 1 {
 		t.Fatal(e)
 	}
-	e, _, code = run(t, append([]string{"login"}, base...)...)
-	if code != 0 {
-		t.Fatal(e)
-	}
+	t.Run("LoginGuidanceUsesSeparateAWSCLICache", func(t *testing.T) {
+		var stderr string
+		e, stderr, code = run(t, append([]string{"login"}, base...)...)
+		want := "Named session cached securely. AWS CLI uses its own SSO cache; sign in with aws sso login when needed."
+		if code != 0 || e.Explanation != want {
+			t.Fatal("cached login did not explain the separate AWS CLI cache", code, e)
+		}
+		cacheAfterLogin, err := os.ReadFile(tokenStore.Path())
+		if err != nil || !bytes.Equal(cacheBefore, cacheAfterLogin) || stderr != "" {
+			t.Fatal("cached login changed tokens or requested device authorization", err, stderr)
+		}
+	})
 	invalid = true
 	e, _, code = run(t, append([]string{"sync"}, base...)...)
 	if code == 0 || e.Error.Code != "auth_invalid" {

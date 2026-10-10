@@ -70,7 +70,7 @@ login is explicit; plan/discover/list/doctor never log in or write token caches.
 Legacy flags-only invocation maps to sync; --dry-run maps sync to plan.
 Use --role repeatedly when multiple distinct roles are assigned.
 --format json emits schema_version 1; --output controls AWS profile output.
-Real AWS / AWS CLI interoperability acceptance remains pending.
+AWS CLI uses its own SSO cache; sign in with aws sso login when needed.
 `
 
 func Parse(args []string, stderr io.Writer) (Options, error) {
@@ -311,7 +311,7 @@ func Execute(ctx context.Context, o Options, stderr io.Writer) (Envelope, error)
 	if o.Command == "login" {
 		err = manager.Login(ctx)
 		if err == nil {
-			out.Explanation = "Named session cached securely. AWS CLI cache interoperability remains pending manual acceptance."
+			out.Explanation = "Named session cached securely. AWS CLI uses its own SSO cache; sign in with aws sso login when needed."
 		}
 		return out, err
 	}
