@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
   "version": "2.0.0",
-  "status": "PASS",
-  "source_fingerprint": "sha256:3b01a75803f27c3a1226ec44f7675e50653d05a069b0300bbb5f05e7b26b9d37",
+  "status": "PENDING",
+  "source_fingerprint": "sha256:f79eae5e9a48ab89335ecdedc3f655af984cb5057ec25e43cb611639a89a78be",
   "real_aws_acceptance": {
-    "R01": "PASS",
-    "R02": "PASS",
-    "R03": "PASS",
-    "R04": "PASS",
-    "R05": "PASS",
-    "R06": "PASS",
-    "R07": "PASS",
-    "R08": "PASS",
-    "R09": "PASS"
+    "R01": "NOT_RUN",
+    "R02": "NOT_RUN",
+    "R03": "NOT_RUN",
+    "R04": "NOT_RUN",
+    "R05": "NOT_RUN",
+    "R06": "NOT_RUN",
+    "R07": "NOT_RUN",
+    "R08": "NOT_RUN",
+    "R09": "NOT_RUN"
   },
-  "notes": "Fresh owner-authorized R01-R09 passed on final stable source 93a5475, version 2.0.0 and its release-flag binary. Independent AWS CLI full account/role discovery matched; generated identity, repeat sync, eight preservation/settings read-only plans, forced copied-token expiry with real refresh, two named sessions and two profile regions at one provider region, and private recovery evidence passed. Original work checkout/configuration/adjacent state were preserved; no IAM mutations or personal CLI cache import. Natural expiry, other tenants/partitions and other provider regions were not certified. Owner authorizes conditional merge, verified stable publication and public Homebrew validation. After the nonshipping integration readiness correction f021047, all four rebuilt application binaries and every shipping payload file were verified byte-identical to the accepted native artifacts from run 38033340717. Production source, dependencies, version, documentation and packaging scripts are unchanged. Actual AWS observations retain source 93a5475 provenance; this is binary-equivalence verification, not a new AWS run. Accepted Darwin ARM binary SHA256: 00c6bb5bc91558341ee3c06ef85b6fbadef52ef245786a3ba8e2f01a8020da4e."
+  "notes": "The emulator readiness regressions and minimal security dependency updates passed focused race checks and minimum Go 1.25 builds. Patching integration dependencies requires golang.org/x/sys v0.45.0, also used by safe settings-file access in the compiled CLI; prior binary-equivalence acceptance no longer applies. Fresh owner-authorized R01-R09 must pass on this final source and release-flag binary before merge, tagging or publication. Earlier private receipts are preserved with their original source provenance."
 }
