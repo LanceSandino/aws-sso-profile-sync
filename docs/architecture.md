@@ -70,7 +70,7 @@ Once a managed identity has a name, later plans reuse that name. Changing a pref
 
 Role selection is explicit when discovery finds multiple distinct roles. If exactly one role is available, it is selected with an explanation. Repeating `--role` selects several exact assigned roles.
 
-The ownership manifest authorizes updates to profiles the tool previously created. An existing unmanaged profile with a conflicting name is preserved and reported as a conflict. External changes to managed identity, removal of a managed profile, or reuse of a session name for a different tenant/SSO region also block an update. There is no automatic adoption command.
+The ownership manifest authorizes updates to profiles the tool previously created. An existing unmanaged profile with a conflicting name is preserved and reported as a conflict. External changes to managed identity, removal of a managed profile, or reuse of a session name for a different tenant/SSO region also block an update. Adoption is never automatic: the explicit `--adopt-existing` flag lets the planner propose, and the store authorize, ownership of an unmanaged profile only when its named session, account and role equal the managed identity.
 
 Existing managed profile regions and output formats are preserved by default, including values edited manually after synchronization. Differing requested values produce `setting_preserved` warnings. The explicit `--override-profile-settings` flag changes only those two settings; it does not bypass ownership or identity checks. Reconciliation can update ownership metadata without replacing an unchanged configuration file.
 

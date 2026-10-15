@@ -25,7 +25,7 @@ aws-sso-profile-sync plan --config-file "$CONFIG" --state-dir "$STATE" \
   --region "$PROFILE_REGION" --role "$ROLE" --format json
 ```
 
-Verify visible accounts/roles against expected access. Select multiple exact roles by repeating `--role`; do not infer privileged choices. Confirm plan contains only intended identities, preserves unmanaged config, and changes no file/cache bytes, modes or mtimes. Inspect conflicts before proceeding; no automatic adoption/deletion exists.
+Verify visible accounts/roles against expected access. Select multiple exact roles by repeating `--role`; do not infer privileged choices. Confirm plan contains only intended identities, preserves unmanaged config, and changes no file/cache bytes, modes or mtimes. Inspect conflicts before proceeding; no automatic adoption/deletion exists, and `--adopt-existing` must be reviewed in a plan before sync.
 
 Only after reviewing the plan, run explicit sync with the same flags and then repeat it:
 

@@ -28,8 +28,11 @@ type Snapshot struct {
 	Owned    map[string]domain.Profile
 }
 type Store struct {
-	Path  string
-	Fault func(stage string) error
+	Path string
+	// AllowAdopt permits recording ownership of an existing unmanaged profile whose
+	// session, account and role already equal the managed identity.
+	AllowAdopt bool
+	Fault      func(stage string) error
 }
 type state struct {
 	Version int                       `json:"version"`
@@ -144,7 +147,7 @@ func (s Store) Read() (Snapshot, error) {
 func identityMatches(kv map[string]string, p domain.Profile) bool {
 	return kv["sso_session"] == p.Session.Name && kv["sso_account_id"] == p.Assignment.AccountID && kv["sso_role_name"] == p.Assignment.RoleName
 }
-func authorize(before Snapshot, updates map[string]map[string]string, owned map[string]domain.Profile) error {
+func authorize(before Snapshot, updates map[string]map[string]string, owned map[string]domain.Profile, adopt bool) error {
 	for name, p := range before.Owned {
 		next, ok := owned[name]
 		if !ok || p.Identity() != next.Identity() || p.Session.Name != next.Session.Name {
@@ -194,6 +197,9 @@ func authorize(before Snapshot, updates map[string]map[string]string, owned map[
 		}
 		if exists {
 			prior, ok := before.Owned[name]
+			if !ok && adopt && identityMatches(existing, p) {
+				continue
+			}
 			if !ok || prior.Identity() != p.Identity() || !identityMatches(existing, prior) {
 				return domain.Fail("conflict", "existing profile is unowned or changed: "+name)
 			}
@@ -254,7 +260,7 @@ func (s Store) Apply(ctx context.Context, before Snapshot, updates map[string]ma
 	if current.Hash != before.Hash || !reflect.DeepEqual(current.Owned, before.Owned) {
 		return domain.Fail("conflict", "config or ownership changed after plan")
 	}
-	if e = authorize(current, updates, owned); e != nil {
+	if e = authorize(current, updates, owned, s.AllowAdopt); e != nil {
 		return e
 	}
 	data, e := Preview(current, updates)

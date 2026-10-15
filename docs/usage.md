@@ -160,6 +160,7 @@ The table shows the proposed profile results and before/after key values. Review
 | --- | --- |
 | `created` | A new managed profile is proposed |
 | `updated` | A missing setting would be filled, or an explicit override would change managed settings |
+| `adopted` | With `--adopt-existing`, an unmanaged profile with the same named session, account and role becomes managed under its current name |
 | `unchanged` | Managed identity and settings already match |
 | `conflict` | Ownership, identity or external edits prevent a safe update |
 | `stale` | A formerly managed assignment is no longer visible; its profile is retained |
@@ -175,6 +176,15 @@ aws-sso-profile-sync sync "${COMMON[@]}" --role "$ROLE" \
 ```
 
 The override covers only region/output on matching managed identities. It does not authorize unmanaged profile adoption, identity changes or session rebinding, and settings files cannot enable it.
+
+Profiles written by version 1, or by hand, are unmanaged, so a plain sync proposes new suffixed profiles beside them. To manage them under their existing names instead, review an adoption plan, then use the same flag for sync:
+
+```bash
+aws-sso-profile-sync plan "${COMMON[@]}" --role "$ROLE" --adopt-existing
+aws-sso-profile-sync sync "${COMMON[@]}" --role "$ROLE" --adopt-existing
+```
+
+Adoption requires an existing `[sso-session]` matching the requested tenant URL and SSO region, and a profile whose `sso_session`, `sso_account_id` and `sso_role_name` equal the assignment exactly. Profiles with inline legacy SSO keys, another session or another role stay unmanaged. When several aliases match, the first name in sorted order is adopted and the rest remain unmanaged with `duplicate_profiles` warnings. Region and output are preserved unless `--override-profile-settings` is also explicit; an unchanged file is not rewritten, and only the ownership manifest records the adoption. Settings files cannot enable it.
 
 `duplicate_profiles` warnings group aliases for the same normalized tenant URL, SSO region, account ID and role. Offline `doctor`/`list` inspect current profiles; a plan inspects its projected configuration. Warnings identify the aliases and a stable identity digest, retain every alias, and do not block a valid operation by themselves. Neither duplicate warnings nor sync automatically deduplicate or delete profiles.
 
@@ -255,6 +265,7 @@ Place flags after the command. `--help` lists the current defaults; Go's single-
 | `--auto-prefix=false` | Disable role-derived prefixes; automatic prefixes default to enabled |
 | `--output` | Requested AWS profile output default, `json`; independent of CLI formatting |
 | `--override-profile-settings` | Explicitly replace existing region/output on matching managed profiles; default false and forbidden in settings |
+| `--adopt-existing` | Manage unmanaged profiles whose named session, account and role already match, keeping their names; default false and not available in settings |
 | `--format` | CLI `table` or schema-versioned `json`, default `table` |
 | `--config-file` | Explicit shared-config path |
 | `--state-dir` | Private authentication state root |

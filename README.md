@@ -14,7 +14,7 @@ Version **2.0.0** replaced that original implementation with explicit authentica
 - Saves repeated nonsecret options in an optional settings file, with named contexts for different SSO sessions.
 - Selects one or several roles and creates distinct profile names from the account label, account ID and a stable identity suffix.
 - Shows proposed changes and before/after values in a table or versioned JSON; JSON also includes configuration hashes.
-- Preserves unrelated profiles, settings and comments. Existing unmanaged profiles are never silently adopted.
+- Preserves unrelated profiles, settings and comments. Existing unmanaged profiles are never silently adopted; explicit `--adopt-existing` takes over only profiles whose named session, account and role already match.
 - Reports removed assignments as stale and retains their profiles for review.
 - Preserves existing profile regions and output settings by default, with warnings when requested defaults differ. Explicit `--override-profile-settings` authorizes changing those settings on managed profiles.
 - Reports duplicate identity aliases without deleting, merging or adopting them.
@@ -91,7 +91,7 @@ aws-sso-profile-sync doctor --config-file "$HOME/.aws/config"
 
 Use `--format json` for CLI output; `--output` controls the AWS profile's output setting. `--prefix` and `--auto-prefix` control the readable portion of profile names. Flags follow the command. Run `aws-sso-profile-sync --help` for all flags and defaults, and see the [usage guide](docs/usage.md) for region precedence and detailed examples.
 
-The original flags-only invocation still maps to `sync`, and single-dash flag spellings work. It now requires a separately completed login. Profile names have changed; old manually configured profiles stay unmanaged and preserved. There is no automatic adoption or deletion operation.
+The original flags-only invocation still maps to `sync`, and single-dash flag spellings work. It now requires a separately completed login. Profile names have changed; old manually configured profiles stay unmanaged and preserved. To manage profiles written by version 1 under their current names instead of creating suffixed duplicates, review `plan --adopt-existing`, then run `sync --adopt-existing`. There is no automatic adoption or deletion operation.
 
 ## Optional settings and contexts
 
