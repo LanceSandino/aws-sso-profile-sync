@@ -2,7 +2,7 @@
   "schema_version": 1,
   "version": "2.1.0",
   "status": "PASS",
-  "source_fingerprint": "sha256:17e671bb6d22bd564d927e0421d1cb18e825ee81fa88dff53a7eefbfa0d44543",
+  "source_fingerprint": "sha256:8806b70ad081397feb7c3fda6848e7678ec3ce740a429d18a1a5788c234c1c1c",
   "real_aws_acceptance": {
     "R01": "PASS",
     "R02": "PASS",
@@ -14,5 +14,5 @@
     "R08": "PASS",
     "R09": "PASS"
   },
-  "notes": "Fresh 2026-10-15 Darwin ARM acceptance passed all nine cases on the shipping source using a private copy of an existing configuration and a fresh tool state directory. A new device-authorization login was observed. --adopt-existing adopted profiles written by version 1 without changing configuration bytes; a further role sync was insert-only and repeat syncs were byte-stable. Independent AWS CLI identity matched for adopted and created profiles. Refresh used an operator-forced expiry of the copied tool token, not natural expiry. Session isolation covered two named sessions and two profile regions within one SSO provider region; the original configuration remained unchanged and other environments remain outside this observed scope."
+  "notes": "Fresh 2026-10-15 Darwin ARM acceptance passed all nine cases on the shipping source using a private copy of an existing configuration and a fresh tool state directory. A new device-authorization login was observed. --adopt-existing adopted profiles written by version 1 without changing configuration bytes; a further role sync was insert-only and repeat syncs were byte-stable. Independent AWS CLI identity matched for adopted and created profiles. Refresh used an operator-forced expiry of the copied tool token, not natural expiry. Session isolation covered two named sessions and two profile regions within one SSO provider region; the original configuration remained unchanged and other environments remain outside this observed scope. The fingerprint was re-bound after documentation-only review changes; no Go, script or build input changed after the tested build."
 }
