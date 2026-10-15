@@ -39,7 +39,7 @@ func (s *stringsFlag) Set(v string) error { *s = append(*s, v); return nil }
 type Options struct {
 	Command, StartURL, Session, SSORegion, Region, Prefix, Output, Config, State, Format, Endpoint, TestRoot, SettingsFile, Context string
 	Roles                                                                                                                           stringsFlag
-	AutoPrefix, DryRun, Open, Probe, SessionExplicit, OverrideProfileSettings, RegionFromSettings                                   bool
+	AutoPrefix, DryRun, Open, Probe, SessionExplicit, OverrideProfileSettings, RegionFromSettings, AdoptExisting                    bool
 	Timeout                                                                                                                         time.Duration
 }
 type Change struct {
@@ -90,6 +90,7 @@ func Parse(args []string, stderr io.Writer) (Options, error) {
 	f.StringVar(&o.Prefix, "prefix", "", "custom prefix; identity suffix prevents collisions")
 	f.BoolVar(&o.AutoPrefix, "auto-prefix", true, "prefix from role name")
 	f.BoolVar(&o.OverrideProfileSettings, "override-profile-settings", false, "explicitly replace existing managed profile region and output")
+	f.BoolVar(&o.AdoptExisting, "adopt-existing", false, "manage existing unmanaged profiles whose session, account and role already match")
 	f.StringVar(&o.Output, "output", "json", "AWS profile output format")
 	f.StringVar(&o.Config, "config-file", os.Getenv("AWS_CONFIG_FILE"), "shared config path")
 	f.StringVar(&o.State, "state-dir", "", "private tool token state directory")
@@ -238,7 +239,7 @@ func Execute(ctx context.Context, o Options, stderr io.Writer) (Envelope, error)
 	}
 	ctx, cancel := context.WithTimeout(ctx, o.Timeout)
 	defer cancel()
-	store := configstore.Store{Path: o.Config}
+	store := configstore.Store{Path: o.Config, AllowAdopt: o.AdoptExisting}
 	snapshot, err := store.Read()
 	if err != nil {
 		return out, err
@@ -331,7 +332,7 @@ func Execute(ctx context.Context, o Options, stderr io.Writer) (Envelope, error)
 	if o.RegionFromSettings && source == "flag" {
 		source = "settings context"
 	}
-	plan, err := planner.Build(snapshot, assignments, planner.Options{Session: session, Region: region, Output: o.Output, Prefix: o.Prefix, AutoPrefix: o.AutoPrefix, Roles: o.Roles, OverrideProfileSettings: o.OverrideProfileSettings})
+	plan, err := planner.Build(snapshot, assignments, planner.Options{Session: session, Region: region, Output: o.Output, Prefix: o.Prefix, AutoPrefix: o.AutoPrefix, Roles: o.Roles, OverrideProfileSettings: o.OverrideProfileSettings, AdoptExisting: o.AdoptExisting})
 	if err != nil {
 		return out, err
 	}
@@ -353,7 +354,7 @@ func Execute(ctx context.Context, o Options, stderr io.Writer) (Envelope, error)
 	if o.Command == "sync" {
 		if err = store.Apply(ctx, snapshot, plan.Sections, plan.Owned); err != nil {
 			for i := range out.Results {
-				if out.Results[i].Status == "created" || out.Results[i].Status == "updated" {
+				if out.Results[i].Status == "created" || out.Results[i].Status == "updated" || out.Results[i].Status == "adopted" {
 					out.Results[i].Status = "failed"
 					out.Results[i].Reason = "transaction did not establish a verified commit"
 				}

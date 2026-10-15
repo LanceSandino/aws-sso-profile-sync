@@ -3,6 +3,12 @@
 This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Release notes describe user-visible changes, newest first.
 
+## [Unreleased]
+
+### Added
+
+- `--adopt-existing` for `plan` and `sync` manages existing unmanaged profiles, such as those written by version 1, under their current names when their named session, account and role match exactly. Without it, sync proposed suffixed duplicates beside every version 1 profile. Adoption is opt-in, preserves region and output unless `--override-profile-settings` is also given, and leaves an unchanged config file byte-for-byte intact.
+
 ## [2.0.1] — 2026-10-10
 
 ### Fixed

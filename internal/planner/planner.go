@@ -18,6 +18,7 @@ type Options struct {
 	AutoPrefix              bool
 	Roles                   []string
 	OverrideProfileSettings bool
+	AdoptExisting           bool
 }
 type Plan struct {
 	Results     []domain.Result              `json:"results"`
@@ -55,6 +56,53 @@ func Name(a domain.Assignment, o Options) string {
 	p := domain.Profile{Assignment: a, Session: o.Session}
 	h := sha256.Sum256([]byte(p.Identity()))
 	return fmt.Sprintf("%s_%s_%x", SafeName(prefix+a.AccountName), a.AccountID, h[:5])
+}
+
+// adoptable returns the first unmanaged profile, by name, that already binds the
+// requested named session to exactly this account and role.
+func adoptable(s configstore.Snapshot, a domain.Assignment, o Options) string {
+	if s.Sections["sso-session "+o.Session.Name] == nil {
+		return ""
+	}
+	names := []string{}
+	for section, kv := range s.Sections {
+		name := strings.TrimPrefix(section, "profile ")
+		if _, owned := s.Owned[name]; owned || name == section || name == "" {
+			continue
+		}
+		if kv["sso_session"] == o.Session.Name && kv["sso_account_id"] == a.AccountID && kv["sso_role_name"] == a.RoleName {
+			names = append(names, name)
+		}
+	}
+	sort.Strings(names)
+	if len(names) == 0 {
+		return ""
+	}
+	return names[0]
+}
+
+// preserve keeps existing region and output unless an override was requested.
+func preserve(p *Plan, existing map[string]string, profile domain.Profile, o Options) domain.Profile {
+	if o.OverrideProfileSettings {
+		return profile
+	}
+	for _, field := range []string{"output", "region"} {
+		requested := profile.Region
+		if field == "output" {
+			requested = profile.Output
+		}
+		if actual := existing[field]; actual != "" {
+			if actual != requested {
+				p.Warnings = append(p.Warnings, domain.Warning{Code: "setting_preserved", Profiles: []string{profile.Name}, Field: field, Existing: actual, Requested: requested})
+			}
+			if field == "region" {
+				profile.Region = actual
+			} else {
+				profile.Output = actual
+			}
+		}
+	}
+	return profile
 }
 func Keys(p domain.Profile) map[string]string {
 	return map[string]string{"sso_session": p.Session.Name, "sso_account_id": p.Assignment.AccountID, "sso_role_name": p.Assignment.RoleName, "region": p.Region, "output": p.Output}
@@ -130,10 +178,18 @@ func Build(s configstore.Snapshot, assignments []domain.Assignment, o Options) (
 		}
 		seen[id] = true
 		profile.Name = Name(a, o)
+		managed, adopting := false, false
 		for name, old := range s.Owned {
 			if old.Identity() == id && old.Session.Name == o.Session.Name {
 				profile.Name = name
+				managed = true
 				break
+			}
+		}
+		if !managed && o.AdoptExisting {
+			if name := adoptable(s, a, o); name != "" {
+				profile.Name = name
+				adopting = true
 			}
 		}
 		if prev, ok := seenName[profile.Name]; ok && prev != id {
@@ -143,7 +199,12 @@ func Build(s configstore.Snapshot, assignments []domain.Assignment, o Options) (
 		r := domain.Result{Profile: profile, Status: "created", Reason: "assigned account and role"}
 		existing := s.Sections["profile "+profile.Name]
 		owned, isOwned := s.Owned[profile.Name]
-		if existing != nil {
+		if existing != nil && adopting {
+			r.Status = "adopted"
+			r.Reason = "existing unmanaged profile matches assignment"
+			profile = preserve(&p, existing, profile, o)
+			r.Profile = profile
+		} else if existing != nil {
 			if !isOwned || owned.Identity() != id || owned.Session.Name != profile.Session.Name {
 				r.Status = "conflict"
 				r.Reason = "existing profile is not owned by this assignment"
@@ -157,24 +218,7 @@ func Build(s configstore.Snapshot, assignments []domain.Assignment, o Options) (
 					}
 				}
 				if r.Status != "conflict" {
-					if !o.OverrideProfileSettings {
-						for _, field := range []string{"output", "region"} {
-							requested := profile.Region
-							if field == "output" {
-								requested = profile.Output
-							}
-							if actual := existing[field]; actual != "" {
-								if actual != requested {
-									p.Warnings = append(p.Warnings, domain.Warning{Code: "setting_preserved", Profiles: []string{profile.Name}, Field: field, Existing: actual, Requested: requested})
-								}
-								if field == "region" {
-									profile.Region = actual
-								} else {
-									profile.Output = actual
-								}
-							}
-						}
-					}
+					profile = preserve(&p, existing, profile, o)
 					r.Profile = profile
 					for k, v := range Keys(profile) {
 						if existing[k] != v {
@@ -189,7 +233,7 @@ func Build(s configstore.Snapshot, assignments []domain.Assignment, o Options) (
 			r.Reason = "managed profile was removed externally"
 		}
 		p.Results = append(p.Results, r)
-		if r.Status == "created" || r.Status == "updated" || (r.Status == "unchanged" && (owned.Region != profile.Region || owned.Output != profile.Output)) {
+		if r.Status == "created" || r.Status == "updated" || r.Status == "adopted" || (r.Status == "unchanged" && (owned.Region != profile.Region || owned.Output != profile.Output)) {
 			p.Sections["profile "+profile.Name] = Keys(profile)
 			p.Owned[profile.Name] = profile
 		}
