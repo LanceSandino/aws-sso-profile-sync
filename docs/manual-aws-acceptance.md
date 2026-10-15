@@ -61,7 +61,7 @@ The table below is a blank worksheet for a **new acceptance run**, not the 2.0.1
 | R05 | Repeated sync no-op; roles/names handled correctly | NOT_RUN |
 | R06 | AWS CLI consumes profiles and returns expected identity | NOT_RUN |
 | R07 | Real expiry, refresh/re-login and CLI interoperability | NOT_RUN |
-| R08 | Multiple sessions and SSO/profile regions | NOT_RUN |
+| R08 | Multiple sessions and profile regions; additional SSO regions where legitimate access exists, otherwise recorded as out of scope | NOT_RUN |
 | R09 | Sanitized evidence and recovery procedure recorded | NOT_RUN |
 
 Update an R-series result to PASS only after observing it on the real authorized system. Failures become tracked compatibility findings and receive local regression anchors when reproducible. Unexecuted observations remain **NOT_RUN**.
