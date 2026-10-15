@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
   "version": "2.1.0",
-  "status": "PENDING",
-  "source_fingerprint": "",
+  "status": "PASS",
+  "source_fingerprint": "sha256:17e671bb6d22bd564d927e0421d1cb18e825ee81fa88dff53a7eefbfa0d44543",
   "real_aws_acceptance": {
-    "R01": "NOT_RUN",
-    "R02": "NOT_RUN",
-    "R03": "NOT_RUN",
-    "R04": "NOT_RUN",
-    "R05": "NOT_RUN",
-    "R06": "NOT_RUN",
-    "R07": "NOT_RUN",
-    "R08": "NOT_RUN",
-    "R09": "NOT_RUN"
+    "R01": "PASS",
+    "R02": "PASS",
+    "R03": "PASS",
+    "R04": "PASS",
+    "R05": "PASS",
+    "R06": "PASS",
+    "R07": "PASS",
+    "R08": "PASS",
+    "R09": "PASS"
   },
-  "notes": "Pending owner-run real AWS acceptance R01-R09 for 2.1.0 on the exact shipping source."
+  "notes": "Fresh 2026-10-15 Darwin ARM acceptance passed all nine cases on the shipping source using a private copy of an existing configuration and a fresh tool state directory. A new device-authorization login was observed. --adopt-existing adopted profiles written by version 1 without changing configuration bytes; a further role sync was insert-only and repeat syncs were byte-stable. Independent AWS CLI identity matched for adopted and created profiles. Refresh used an operator-forced expiry of the copied tool token, not natural expiry. Session isolation covered two named sessions and two profile regions within one SSO provider region; the original configuration remained unchanged and other environments remain outside this observed scope."
 }
