@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Validate one-source versions and fail-closed owner release acceptance metadata."""
+"""Validate one-source versions and fail-closed release acceptance metadata.
+
+Patch and minor releases are accepted by the automated release validation
+(AUTOMATED). Major releases additionally require owner-run real AWS acceptance
+R01-R09 bound to the exact source fingerprint (REAL_AWS).
+"""
 import argparse
 import hashlib
 import json
@@ -12,7 +17,11 @@ import sys
 import tempfile
 
 ACCEPTANCE_PATH = ".github/release-acceptance.json"
+SCHEMA_VERSION = 2
 R_CASES = {f"R{i:02d}" for i in range(1, 10)}
+AUTOMATED = "AUTOMATED"
+REAL_AWS = "REAL_AWS"
+RECORD_KEYS = {"schema_version", "version", "acceptance", "source_fingerprint", "real_aws_acceptance", "notes"}
 SEMVER = re.compile(r"(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?", re.ASCII)
 
 class ReleaseError(Exception):
@@ -163,8 +172,22 @@ def unique_object(pairs):
 def reject_constant(_):
     raise ReleaseError("nonstandard constants in release acceptance JSON")
 
-def gate(root, acceptance=None):
-    version = check_default(root)
+def release_kind(root, version):
+    """Classify VERSION; anything that cannot be shown to continue a published major line is major."""
+    match = SEMVER.fullmatch(semver(version))
+    major, minor, patch = (int(match.group(index)) for index in (1, 2, 3))
+    if minor == 0 and patch == 0:
+        return "major"
+    published = set()
+    for tag in git(root, "tag", "--list", "v*").decode("utf-8", "replace").split():
+        stable = SEMVER.fullmatch(tag[1:])
+        if stable and not stable.group(4):
+            published.add(int(stable.group(1)))
+    if major not in published:
+        return "major"
+    return "minor" if patch == 0 else "patch"
+
+def load_record(root, acceptance=None):
     path = Path(acceptance) if acceptance else root / ACCEPTANCE_PATH
     if not path.is_absolute():
         path = root / path
@@ -173,33 +196,52 @@ def gate(root, acceptance=None):
             raise ReleaseError("release acceptance JSON exceeds size limit")
         record = json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=unique_object, parse_constant=reject_constant)
     except (OSError, UnicodeError, json.JSONDecodeError):
-        raise ReleaseError("release acceptance record missing or malformed; real AWS remains pending") from None
-    if not isinstance(record, dict) or type(record.get("schema_version")) is not int or record["schema_version"] != 1:
-        raise ReleaseError("release acceptance requires JSON schema_version 1")
-    if record.get("status") != "PASS":
+        raise ReleaseError("release acceptance record missing or malformed; publication is blocked") from None
+    if not isinstance(record, dict) or type(record.get("schema_version")) is not int or record["schema_version"] != SCHEMA_VERSION:
+        raise ReleaseError(f"release acceptance requires JSON schema_version {SCHEMA_VERSION}")
+    if not set(record) <= RECORD_KEYS:
+        raise ReleaseError("unexpected keys in release acceptance JSON")
+    return record
+
+def gate(root, acceptance=None):
+    """Return (version, basis) only when the record satisfies this release type's policy."""
+    version = check_default(root)
+    record = load_record(root, acceptance)
+    basis = record.get("acceptance")
+    if basis not in (AUTOMATED, REAL_AWS):
         raise ReleaseError("release acceptance is pending; publication is blocked")
     if semver(record.get("version")) != version:
         raise ReleaseError("release acceptance version does not match VERSION")
-    if record.get("source_fingerprint") != fingerprint(root):
-        raise ReleaseError("release acceptance source fingerprint is stale or missing")
-    require_clean_baseline(root)
     results = record.get("real_aws_acceptance")
-    if not isinstance(results, dict) or set(results) != R_CASES or any(value != "PASS" for value in results.values()):
-        raise ReleaseError("all nine owner-run R01-R09 results must be PASS before publication")
-    return version
+    if not isinstance(results, dict) or set(results) != R_CASES:
+        raise ReleaseError("release acceptance must list exactly the real AWS cases R01-R09")
+    current = fingerprint(root)
+    if basis == REAL_AWS:
+        if record.get("source_fingerprint") != current:
+            raise ReleaseError("real AWS acceptance source fingerprint is stale or missing")
+        if any(value != "PASS" for value in results.values()):
+            raise ReleaseError("all nine owner-run R01-R09 results must be PASS for real AWS acceptance")
+    else:
+        kind = release_kind(root, version)
+        if kind == "major":
+            raise ReleaseError("major releases require owner-run real AWS acceptance R01-R09; automated acceptance covers patch and minor releases only")
+        if record.get("source_fingerprint") != "" or any(value != "NOT_RUN" for value in results.values()):
+            raise ReleaseError("automated acceptance must leave R01-R09 NOT_RUN and the fingerprint empty; record REAL_AWS to claim real results")
+    require_clean_baseline(root)
+    return version, basis
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    for name in ["version", "check", "fingerprint", "gate"]:
+    for name in ["version", "check", "fingerprint", "kind", "gate", "acceptance"]:
         command = commands.add_parser(name)
         command.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1])
         if name == "version":
             command.add_argument("--expect", help="validate packaging override equals repository version")
         if name == "check":
             command.add_argument("--write", action="store_true", help="regenerate the Go version default")
-        if name == "gate":
-            command.add_argument("--acceptance", help="acceptance JSON path; defaults to repository owner record")
+        if name in ("gate", "acceptance"):
+            command.add_argument("--acceptance", help="acceptance JSON path; defaults to the repository record")
     args = parser.parse_args()
     try:
         root = args.root.resolve()
@@ -211,8 +253,12 @@ def main():
             value = check_default(root, args.write)
         elif args.command == "fingerprint":
             value = fingerprint(root)
+        elif args.command == "kind":
+            value = release_kind(root, read_version(root))
+        elif args.command == "gate":
+            value = gate(root, args.acceptance)[0]
         else:
-            value = gate(root, args.acceptance)
+            value = gate(root, args.acceptance)[1]
         print(value)
         return 0
     except (ReleaseError, ValueError):

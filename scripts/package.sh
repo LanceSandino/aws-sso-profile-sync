@@ -17,7 +17,14 @@ export GOENV=off GOFLAGS= GOCACHE="${GOCACHE:-${TMPDIR:-/tmp}/aws-sso-sync-build
 mkdir -p "$HOME"
 cd "$TASK_REPO_ROOT"
 TASK_ACCEPTANCE=NOT_RUN
-if python3 scripts/release.py gate > "$TASK_BUILD_ROOT/acceptance.txt" 2>&1; then TASK_ACCEPTANCE=PASS; fi
+TASK_REAL_AWS=NOT_RUN
+if TASK_BASIS=$(python3 scripts/release.py acceptance 2> "$TASK_BUILD_ROOT/acceptance.txt"); then
+  case "$TASK_BASIS" in
+    AUTOMATED) TASK_ACCEPTANCE=AUTOMATED ;;
+    REAL_AWS) TASK_ACCEPTANCE=REAL_AWS; TASK_REAL_AWS=PASS ;;
+    *) printf 'Unexpected release acceptance basis.\n' >&2; exit 1 ;;
+  esac
+fi
 TASK_NATIVE_OS=$(go env GOHOSTOS)
 TASK_NATIVE_ARCH=$(go env GOHOSTARCH)
 case "$TASK_NATIVE_OS" in darwin|linux) ;; *) printf 'Candidate packaging supports Linux/macOS only.\n' >&2; exit 1 ;; esac
@@ -54,11 +61,11 @@ assert value['schema_version']==1 and value['command']=='doctor' and value['stat
 PY
     TASK_EXECUTION=NATIVE_OFFLINE_SMOKE_PASS
   fi
-  python3 - "$TASK_STAGE" "$TASK_OUT/$TASK_NAME.tar.gz" "$TASK_EPOCH" "$TASK_VERSION" "$TASK_TARGET" "$TASK_EXECUTION" "$TASK_ACCEPTANCE" <<'PY'
+  python3 - "$TASK_STAGE" "$TASK_OUT/$TASK_NAME.tar.gz" "$TASK_EPOCH" "$TASK_VERSION" "$TASK_TARGET" "$TASK_EXECUTION" "$TASK_ACCEPTANCE" "$TASK_REAL_AWS" <<'PY'
 import gzip, json, pathlib, tarfile, sys
-stage, archive, epoch, version, target, execution, acceptance=sys.argv[1:]
+stage, archive, epoch, version, target, execution, acceptance, real_aws=sys.argv[1:]
 root=pathlib.Path(stage); epoch=int(epoch)
-(root/'BUILD-METADATA.json').write_text(json.dumps({'version':version,'target':target,'source_date_epoch':epoch,'execution':execution,'real_aws_acceptance':acceptance},sort_keys=True)+'\n')
+(root/'BUILD-METADATA.json').write_text(json.dumps({'version':version,'target':target,'source_date_epoch':epoch,'execution':execution,'release_acceptance':acceptance,'real_aws_acceptance':real_aws},sort_keys=True)+'\n')
 with open(archive,'wb') as raw, gzip.GzipFile(filename='',mode='wb',fileobj=raw,mtime=0) as compressed, tarfile.open(fileobj=compressed,mode='w',format=tarfile.PAX_FORMAT) as tar:
     for path in [root]+sorted(root.rglob('*')):
         info=tar.gettarinfo(str(path),arcname=str(path.relative_to(root.parent)))

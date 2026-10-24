@@ -47,6 +47,10 @@ def release_policy(release, validation):
         raise ValueError("All four native targets are required")
     if "NATIVE_OFFLINE_SMOKE_PASS" not in draft or "SHA256SUMS-$TARGET_ID" not in native:
         raise ValueError("Native artifact execution and separate checksum manifests are required")
+    if ("RELEASE_ACCEPTANCE=$(python3 scripts/release.py acceptance)" not in draft
+            or "value.get('release_acceptance')!=acceptance" not in draft
+            or "value.get('real_aws_acceptance')!=real_aws" not in draft):
+        raise ValueError("Archive acceptance metadata must match the release gate's acceptance basis")
     integration = job(validation, "floci")
     if "go test -tags integration" not in integration or "range(1,11)" not in integration or "and not skips" not in integration:
         raise ValueError("All real Floci cases must execute without skips")
@@ -104,6 +108,13 @@ class WorkflowBoundaries(unittest.TestCase):
                         self.validation.replace("and not skips", "or skips")):
             with self.subTest(), self.assertRaises(ValueError):
                 release_policy(self.release, changed)
+
+    def test_archive_acceptance_basis_cannot_be_skipped(self):
+        for original in ("RELEASE_ACCEPTANCE=$(python3 scripts/release.py acceptance)",
+                         "value.get('release_acceptance')!=acceptance",
+                         "value.get('real_aws_acceptance')!=real_aws"):
+            with self.subTest(guard=original), self.assertRaises(ValueError):
+                release_policy(self.release.replace(original, "True"), self.validation)
 
     def test_vulnerability_scan_cannot_be_dropped(self):
         for changed in (self.validation.replace("  vulncheck:\n", "  removed-scan:\n"),
