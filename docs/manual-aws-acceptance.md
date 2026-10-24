@@ -2,7 +2,7 @@
 
 Stable **2.0.1 passed R01–R09** on an owner-authorized system. See the [release's acceptance record](https://github.com/LanceSandino/aws-sso-profile-sync/blob/v2.0.1/.github/release-acceptance.json). Observed scope was two named sessions, two profile regions and one Identity Center region, including independent AWS CLI discovery and generated-profile identity, preservation, explicit overrides, aliases and real token refresh. Refresh used an operator-forced expiry of a copied tool token; natural-expiry R07 and other tenants, partitions and provider regions were not certified.
 
-This document is a repeatable maintainer procedure, not a pending-installation checklist. Run it for a new release or another environment only on an authorized machine with legitimate IAM Identity Center access. Development tests and CI must never access real AWS. No real account, organization, Identity Center instance, permission set or assignment needs to be created. Keep credentials and tenant evidence private; Floci results do not substitute for real acceptance.
+This document is a repeatable maintainer procedure, not a pending-installation checklist. It is required for every major release (`X.0.0` and its release candidates); patch and minor releases are accepted by the automated release validation described in [releasing](releasing.md#release-acceptance), and the owner may still choose to run it for them or for another environment. Run it only on an authorized machine with legitimate IAM Identity Center access. Development tests and CI must never access real AWS. No real account, organization, Identity Center instance, permission set or assignment needs to be created. Keep credentials and tenant evidence private; Floci results do not substitute for real acceptance.
 
 ## Preflight and recovery
 
@@ -50,7 +50,7 @@ After a safe real expiry interval or approved operator test, observe read-only d
 
 ## Acceptance record
 
-The table below is a blank worksheet for a **new acceptance run**, not the 2.0.1 result. All nine released 2.0.1 cases passed as recorded above. Never carry a previous release's PASS into a changed source tree.
+The table below is a blank worksheet for a **new acceptance run**, not the 2.0.1 result. All nine released 2.0.1 cases passed as recorded above. Never carry a previous release's PASS into a changed source tree. After all nine pass, record them in `.github/release-acceptance.json` with `acceptance` set to `REAL_AWS` and the exact source fingerprint.
 
 | ID | Observation | Status |
 | --- | --- | --- |

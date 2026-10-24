@@ -23,6 +23,7 @@ Security release. Upgrade from any earlier version; the CLI's commands, profile 
 - All Go modules are updated to their latest releases, including the AWS SDK for Go v2 (`credentials` 1.20.10, `sso` 1.38.5, `ssooidc` 1.43.5) and `golang.org/x/sys` 0.49.0. Their license texts are unchanged.
 - Go source builds now require Go 1.26 or newer, the oldest supported Go release series; current dependencies no longer support Go 1.25.
 - Validation runs govulncheck on shipping and integration code, a scheduled workflow repeats it weekly, and Dependabot proposes Go module and GitHub Actions updates.
+- Patch and minor releases are now accepted by the automated release validation: native build, race, coverage, distribution and installation tests on all four targets, plus Floci emulator acceptance with synthetic data. Real IAM Identity Center and AWS CLI acceptance remains required for major releases. 2.1.1 was accepted this way; real acceptance last passed for 2.1.0. Release archive metadata records the basis in `release_acceptance`.
 
 ## [2.1.0] — 2026-10-15
 

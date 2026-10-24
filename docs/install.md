@@ -2,7 +2,7 @@
 
 Stable [2.1.1](https://github.com/LanceSandino/aws-sso-profile-sync/releases/tag/v2.1.1) is available through Homebrew, Go install, or a verified release archive. All four published Linux/macOS Intel/ARM archives passed native validation. Go source requires Go 1.26 or newer; validation and release builds use Go 1.27.3. The archive installer requires Bash and Python 3. Windows is unsupported.
 
-Published archive metadata records `NATIVE_OFFLINE_SMOKE_PASS` and real AWS acceptance `PASS`. Locally built candidates may record `NOT_RUN`; that is not a verified release. Real AWS scope is recorded in the [immutable 2.1.1 acceptance record](https://github.com/LanceSandino/aws-sso-profile-sync/blob/v2.1.1/.github/release-acceptance.json).
+Published archive metadata records `NATIVE_OFFLINE_SMOKE_PASS` and the release acceptance basis. 2.1.1 is a patch release with `release_acceptance` `AUTOMATED`: native, race, distribution and installation tests on all four targets plus Floci emulator acceptance with synthetic data. Its `real_aws_acceptance` is `NOT_RUN`; real IAM Identity Center and AWS CLI acceptance is required for major releases and last passed for 2.1.0, as recorded in the [immutable 2.1.0 acceptance record](https://github.com/LanceSandino/aws-sso-profile-sync/blob/v2.1.0/.github/release-acceptance.json). Locally built candidates may record `NOT_RUN` for both; that is not a verified release.
 
 ## Homebrew
 
