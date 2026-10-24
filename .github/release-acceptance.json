@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "version": "2.1.0",
-  "status": "PASS",
-  "source_fingerprint": "sha256:8806b70ad081397feb7c3fda6848e7678ec3ce740a429d18a1a5788c234c1c1c",
+  "version": "2.1.1",
+  "status": "PENDING",
+  "source_fingerprint": "",
   "real_aws_acceptance": {
-    "R01": "PASS",
-    "R02": "PASS",
-    "R03": "PASS",
-    "R04": "PASS",
-    "R05": "PASS",
-    "R06": "PASS",
-    "R07": "PASS",
-    "R08": "PASS",
-    "R09": "PASS"
+    "R01": "NOT_RUN",
+    "R02": "NOT_RUN",
+    "R03": "NOT_RUN",
+    "R04": "NOT_RUN",
+    "R05": "NOT_RUN",
+    "R06": "NOT_RUN",
+    "R07": "NOT_RUN",
+    "R08": "NOT_RUN",
+    "R09": "NOT_RUN"
   },
-  "notes": "Fresh 2026-10-15 Darwin ARM acceptance passed all nine cases on the shipping source using a private copy of an existing configuration and a fresh tool state directory. A new device-authorization login was observed. --adopt-existing adopted profiles written by version 1 without changing configuration bytes; a further role sync was insert-only and repeat syncs were byte-stable. Independent AWS CLI identity matched for adopted and created profiles. Refresh used an operator-forced expiry of the copied tool token, not natural expiry. Session isolation covered two named sessions and two profile regions within one SSO provider region; the original configuration remained unchanged and other environments remain outside this observed scope. The fingerprint was re-bound after documentation-only review changes; no Go, script or build input changed after the tested build."
+  "notes": "Pending owner-run real AWS acceptance R01-R09 for 2.1.1 on the exact shipping source."
 }

@@ -3,6 +3,27 @@
 This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Release notes describe user-visible changes, newest first.
 
+## [2.1.1] — 2026-10-24
+
+Security release. Upgrade from any earlier version; the CLI's commands, profile names and configuration behavior are unchanged.
+
+### Fixed
+
+- Release binaries are built with Go 1.27.3. 2.1.0 was built with Go 1.27.1, and govulncheck reports nine Go standard-library vulnerabilities in that toolchain as reachable from the CLI:
+  - GO-2026-6809 (CVE-2026-111943): `crypto/x509` accepted known compromised intermediate certificates.
+  - GO-2026-6607 (CVE-2026-97031): `crypto/tls` accepted malformed ECH outer extension references.
+  - GO-2026-6605 (CVE-2026-56866): HTTP/1 client connection desynchronization after a rejected CONNECT.
+  - GO-2026-6610 (CVE-2026-78660): the HTTP/2 transport accepted malformed framing-related headers.
+  - GO-2026-6611 (CVE-2026-78669): excessive CPU use from repeated HTTP/2 initial window changes.
+  - GO-2026-6603 (CVE-2026-78659), GO-2026-6613 (CVE-2026-94439), GO-2026-6617 (CVE-2026-97032) and GO-2026-6608 (CVE-2026-94440): `net/http` and `net/textproto` fixes from Go 1.27.2.
+- Development and integration-test dependencies are updated, including `golang.org/x/crypto` 0.58.0 (GO-2026-6354 and GO-2026-6355 in `x/crypto/ssh`, test tooling only) and Testcontainers-Go 0.44.0.
+
+### Improved
+
+- All Go modules are updated to their latest releases, including the AWS SDK for Go v2 (`credentials` 1.20.10, `sso` 1.38.5, `ssooidc` 1.43.5) and `golang.org/x/sys` 0.49.0. Their license texts are unchanged.
+- Go source builds now require Go 1.26 or newer, the oldest supported Go release series; current dependencies no longer support Go 1.25.
+- Validation runs govulncheck on shipping and integration code, a scheduled workflow repeats it weekly, and Dependabot proposes Go module and GitHub Actions updates.
+
 ## [2.1.0] — 2026-10-15
 
 ### Added
