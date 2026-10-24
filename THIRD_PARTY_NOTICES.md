@@ -10,14 +10,14 @@ not replace upstream license terms.
 
 | Module | Version | License |
 | --- | --- | --- |
-| `github.com/aws/aws-sdk-go-v2` | `v1.47.3` | Apache-2.0 |
-| `github.com/aws/aws-sdk-go-v2/credentials` | `v1.18.12` | Apache-2.0 |
-| `github.com/aws/aws-sdk-go-v2/internal/configsources` | `v1.5.6` | Apache-2.0 |
-| `github.com/aws/aws-sdk-go-v2/internal/endpoints/v2` | `v2.8.6` | Apache-2.0 |
-| `github.com/aws/aws-sdk-go-v2/service/sso` | `v1.29.3` | Apache-2.0 |
-| `github.com/aws/aws-sdk-go-v2/service/ssooidc` | `v1.34.4` | Apache-2.0 |
-| `github.com/aws/smithy-go` | `v1.28.5` | Apache-2.0 |
-| `golang.org/x/sys` | `v0.45.0` | BSD-3-Clause |
+| `github.com/aws/aws-sdk-go-v2` | `v1.47.4` | Apache-2.0 |
+| `github.com/aws/aws-sdk-go-v2/credentials` | `v1.20.10` | Apache-2.0 |
+| `github.com/aws/aws-sdk-go-v2/internal/configsources` | `v1.5.7` | Apache-2.0 |
+| `github.com/aws/aws-sdk-go-v2/internal/endpoints/v2` | `v2.8.7` | Apache-2.0 |
+| `github.com/aws/aws-sdk-go-v2/service/sso` | `v1.38.5` | Apache-2.0 |
+| `github.com/aws/aws-sdk-go-v2/service/ssooidc` | `v1.43.5` | Apache-2.0 |
+| `github.com/aws/smithy-go` | `v1.28.6` | Apache-2.0 |
+| `golang.org/x/sys` | `v0.49.0` | BSD-3-Clause |
 
 AWS SDK modules are available from https://github.com/aws/aws-sdk-go-v2;
 Smithy Go is available from https://github.com/aws/smithy-go. Upstream
@@ -25,7 +25,7 @@ attribution NOTICE files are retained verbatim in the project `NOTICE`.
 The following distinct license texts are copied verbatim from the pinned modules;
 identical copies are grouped.
 
-### `github.com/aws/aws-sdk-go-v2 v1.47.3`, `github.com/aws/aws-sdk-go-v2/credentials v1.18.12`, `github.com/aws/aws-sdk-go-v2/internal/configsources v1.5.6`, `github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.8.6`, `github.com/aws/aws-sdk-go-v2/service/sso v1.29.3`, `github.com/aws/aws-sdk-go-v2/service/ssooidc v1.34.4`
+### `github.com/aws/aws-sdk-go-v2 v1.47.4`, `github.com/aws/aws-sdk-go-v2/credentials v1.20.10`, `github.com/aws/aws-sdk-go-v2/internal/configsources v1.5.7`, `github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.8.7`, `github.com/aws/aws-sdk-go-v2/service/sso v1.38.5`, `github.com/aws/aws-sdk-go-v2/service/ssooidc v1.43.5`
 
 ```text
 
@@ -233,7 +233,7 @@ identical copies are grouped.
 
 ```
 
-### `github.com/aws/smithy-go v1.28.5`
+### `github.com/aws/smithy-go v1.28.6`
 
 ```text
 
@@ -416,7 +416,7 @@ identical copies are grouped.
 
 ## Go runtime and standard-library vendored packages
 
-The candidate is built with Go 1.27.1. The Go runtime and standard library are
+The candidate is built with Go 1.27.3. The Go runtime and standard library are
 licensed under the Go BSD license. Their compiled vendored `golang.org/x` code
 retains the associated BSD copyright notices below. The Go toolchain source is
 available from https://go.dev/dl/. These notices also cover earlier supported Go
@@ -521,7 +521,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ```
 
-### golang.org/x/sys v0.45.0 (production dependency)
+### golang.org/x/sys v0.49.0 (production dependency)
 
 ```text
 Copyright 2009 The Go Authors.

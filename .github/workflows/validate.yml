@@ -41,7 +41,7 @@ jobs:
           printf 'GOCACHE=%s/aws-sso-go-build\nGOMODCACHE=%s/aws-sso-go-mod\nCHECK_OUTPUT_DIR=%s/quality-results\n' "$RUNNER_TEMP" "$RUNNER_TEMP" "$RUNNER_TEMP" >> "$GITHUB_ENV"
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
-          go-version: '1.27.1'
+          go-version: '1.27.3'
           cache: false
       - name: Public source and release tooling checks
         env:
@@ -89,7 +89,7 @@ jobs:
           if-no-files-found: error
           retention-days: 7
   minimum-go:
-    name: Minimum Go 1.25 compile
+    name: Minimum Go 1.26 compile
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
@@ -103,7 +103,7 @@ jobs:
           printf 'GOCACHE=%s/aws-sso-min-go-build\nGOMODCACHE=%s/aws-sso-min-go-mod\n' "$RUNNER_TEMP" "$RUNNER_TEMP" >> "$GITHUB_ENV"
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
-          go-version: '1.25.x'
+          go-version: '1.26.x'
           cache: false
       - name: Compile with minimum supported Go series
         run: |
@@ -123,7 +123,7 @@ jobs:
           printf 'GOCACHE=%s/aws-sso-go-build\nGOMODCACHE=%s/aws-sso-go-mod\n' "$RUNNER_TEMP" "$RUNNER_TEMP" >> "$GITHUB_ENV"
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
-          go-version: '1.27.1'
+          go-version: '1.27.3'
           cache: false
       - name: Seeded pinned Floci and compiled CLI acceptance
         shell: bash

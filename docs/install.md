@@ -1,6 +1,6 @@
 # Installation and rollback
 
-Stable [2.1.0](https://github.com/LanceSandino/aws-sso-profile-sync/releases/tag/v2.1.0) is available through Homebrew, Go install, or a verified release archive. All four published Linux/macOS Intel/ARM archives passed native validation. Go source requires Go 1.25 or newer; validation uses Go 1.27.1. The archive installer requires Bash and Python 3. Windows is unsupported.
+Stable [2.1.0](https://github.com/LanceSandino/aws-sso-profile-sync/releases/tag/v2.1.0) is available through Homebrew, Go install, or a verified release archive. All four published Linux/macOS Intel/ARM archives passed native validation. Go source requires Go 1.26 or newer; validation and release builds use Go 1.27.3. The archive installer requires Bash and Python 3. Windows is unsupported.
 
 Published archive metadata records `NATIVE_OFFLINE_SMOKE_PASS` and real AWS acceptance `PASS`. Locally built candidates may record `NOT_RUN`; that is not a verified release. Real AWS scope is recorded in the [immutable 2.1.0 acceptance record](https://github.com/LanceSandino/aws-sso-profile-sync/blob/v2.1.0/.github/release-acceptance.json).
 
@@ -15,7 +15,7 @@ The public tap selects the matching macOS/Linux Intel/ARM release archive and ve
 
 ## Go install
 
-Install the latest stable release with Go 1.25 or newer:
+Install the latest stable release with Go 1.26 or newer:
 
 ```bash
 go install github.com/LanceSandino/aws-sso-profile-sync/v2@latest
@@ -66,7 +66,7 @@ Add `$HOME/.local/bin` to PATH yourself if needed. The installer leaves an exist
 
 ## Build the tagged source
 
-With Go 1.25 or newer, check out the release tag and install from that checkout:
+With Go 1.26 or newer, check out the release tag and install from that checkout:
 
 ```bash
 git clone --branch v2.1.0 --depth 1 https://github.com/LanceSandino/aws-sso-profile-sync.git

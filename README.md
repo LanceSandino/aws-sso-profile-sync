@@ -36,7 +36,7 @@ The public [Homebrew tap](https://github.com/LanceSandino/homebrew-tap) installs
 
 ### Go install
 
-With Go 1.25 or newer:
+With Go 1.26 or newer:
 
 ```bash
 go install github.com/LanceSandino/aws-sso-profile-sync/v2@latest

@@ -51,7 +51,7 @@ def release_policy(release, validation):
     if "go test -tags integration" not in integration or "range(1,11)" not in integration or "and not skips" not in integration:
         raise ValueError("All real Floci cases must execute without skips")
     minimum = job(validation, "minimum-go")
-    if "GOTOOLCHAIN: local" not in minimum or "go-version: '1.25.x'" not in minimum:
+    if "GOTOOLCHAIN: local" not in minimum or "go-version: '1.26.x'" not in minimum:
         raise ValueError("The minimum Go compilation job must not upgrade toolchains")
     for action in re.findall(r"uses: (actions/[^\s]+)", release + validation):
         if not re.fullmatch(r"actions/[\w-]+@[0-9a-f]{40}", action):
