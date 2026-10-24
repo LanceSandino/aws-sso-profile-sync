@@ -53,6 +53,9 @@ def release_policy(release, validation):
     minimum = job(validation, "minimum-go")
     if "GOTOOLCHAIN: local" not in minimum or "go-version: '1.26.x'" not in minimum:
         raise ValueError("The minimum Go compilation job must not upgrade toolchains")
+    vulncheck = job(validation, "vulncheck")
+    if "govulncheck@v" not in vulncheck or "./..." not in vulncheck or "-tags integration" not in vulncheck:
+        raise ValueError("Shipping and integration code must pass a pinned govulncheck scan")
     for action in re.findall(r"uses: (actions/[^\s]+)", release + validation):
         if not re.fullmatch(r"actions/[\w-]+@[0-9a-f]{40}", action):
             raise ValueError("Official actions must be pinned to immutable commits")
@@ -99,6 +102,13 @@ class WorkflowBoundaries(unittest.TestCase):
         for changed in (self.validation.replace("target: linux/arm64", "target: linux/amd64"),
                         self.validation.replace("  floci:\n", "  removed-integration:\n"),
                         self.validation.replace("and not skips", "or skips")):
+            with self.subTest(), self.assertRaises(ValueError):
+                release_policy(self.release, changed)
+
+    def test_vulnerability_scan_cannot_be_dropped(self):
+        for changed in (self.validation.replace("  vulncheck:\n", "  removed-scan:\n"),
+                        self.validation.replace("govulncheck@v", "true@v"),
+                        self.validation.replace(" -tags integration -test", "")):
             with self.subTest(), self.assertRaises(ValueError):
                 release_policy(self.release, changed)
 
