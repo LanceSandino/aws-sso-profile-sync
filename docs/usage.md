@@ -6,7 +6,7 @@ The original tool has been used daily across more than 50 AWS accounts. Version 
 
 ## Install and check the executable
 
-Follow [installation and rollback](install.md) for source builds, release archives, checksum verification and an explicit installation prefix. From a reviewed source checkout with Go 1.25 or newer:
+Follow [installation and rollback](install.md) for source builds, release archives, checksum verification and an explicit installation prefix. From a reviewed source checkout with Go 1.26 or newer:
 
 ```bash
 GOBIN="$(pwd)/dist/local-bin" go install .

@@ -18,8 +18,19 @@ class ReleaseSafety(unittest.TestCase):
         self.version("0.1.0-rc.1")
         (self.root / "main.go").write_text("package main\nfunc main() {}\n")
         self.run_helper("check", "--write", success=True)
+        self.commit("Synthetic baseline")
+
+    def commit(self, message):
         subprocess.run(["git", "-C", str(self.root), "add", "."], check=True)
-        subprocess.run(["git", "-C", str(self.root), "-c", "user.name=Synthetic Release Fixture", "-c", "user.email=fixture@example.invalid", "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null", "commit", "-qm", "Synthetic baseline"], check=True)
+        subprocess.run(["git", "-C", str(self.root), "-c", "user.name=Synthetic Release Fixture", "-c", "user.email=fixture@example.invalid", "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null", "commit", "-qm", message], check=True)
+
+    def release(self, value, *tags):
+        """Commit a synthetic VERSION after creating already-published tags."""
+        for tag in tags:
+            subprocess.run(["git", "-C", str(self.root), "tag", tag], check=True)
+        self.version(value)
+        self.run_helper("check", "--write", success=True)
+        self.commit("Synthetic " + value)
 
     def version(self, value):
         (self.root / "VERSION").write_text(value + "\n")
@@ -43,12 +54,21 @@ class ReleaseSafety(unittest.TestCase):
             self.assertEqual(result.returncode == 0, success, result.stderr)
         return result
 
-    def acceptance(self):
-        record = {"schema_version": 1, "status": "PASS", "version": "0.1.0-rc.1", "source_fingerprint": self.run_helper("fingerprint", success=True).stdout.strip(), "real_aws_acceptance": {case: "PASS" for case in R_CASES}}
+    def acceptance(self, version="0.1.0-rc.1"):
+        """Write a complete owner real AWS record bound to the current source."""
+        record = {"schema_version": 2, "version": version, "acceptance": "REAL_AWS", "source_fingerprint": self.run_helper("fingerprint", success=True).stdout.strip(), "real_aws_acceptance": {case: "PASS" for case in R_CASES}}
+        return self.record(record), record
+
+    def automated(self, version):
+        """Write a patch/minor record that claims no real AWS results."""
+        record = {"schema_version": 2, "version": version, "acceptance": "AUTOMATED", "source_fingerprint": "", "real_aws_acceptance": {case: "NOT_RUN" for case in R_CASES}, "notes": "Synthetic automated acceptance."}
+        return self.record(record), record
+
+    def record(self, record):
         target = self.root / ".github" / "release-acceptance.json"
         target.parent.mkdir(exist_ok=True)
         target.write_text(json.dumps(record))
-        return target, record
+        return target
 
     def test_single_source_generation_and_stale_default(self):
         self.assertEqual(self.run_helper("version", success=True).stdout, "0.1.0-rc.1\n")
@@ -125,7 +145,7 @@ class ReleaseSafety(unittest.TestCase):
 
     def test_gate_rejects_pending_stale_invalid_or_duplicate_records(self):
         target, valid = self.acceptance()
-        for key, value in [("status", "PENDING"), ("version", "0.2.0"), ("source_fingerprint", "sha256:" + "0" * 64), ("schema_version", True), ("real_aws_acceptance", {**valid["real_aws_acceptance"], "R10": "PASS"})]:
+        for key, value in [("acceptance", "PENDING"), ("acceptance", None), ("acceptance", "PASS"), ("version", "0.2.0"), ("source_fingerprint", "sha256:" + "0" * 64), ("schema_version", True), ("schema_version", 1), ("status", "PASS"), ("real_aws_acceptance", {**valid["real_aws_acceptance"], "R10": "PASS"}), ("real_aws_acceptance", "PASS")]:
             record = {**valid, key: value}
             target.write_text(json.dumps(record))
             self.run_helper("gate", success=False)
@@ -165,6 +185,68 @@ class ReleaseSafety(unittest.TestCase):
         with tempfile.TemporaryDirectory() as outside:
             result = subprocess.run(["python3", str(SCRIPT), "fingerprint", "--root", outside], capture_output=True, timeout=10)
             self.assertNotEqual(result.returncode, 0)
+
+    def test_patch_and_minor_releases_pass_on_automated_acceptance(self):
+        self.release("2.1.1", "v2.0.0", "v2.1.0")
+        self.assertEqual(self.run_helper("kind", success=True).stdout, "patch\n")
+        self.automated("2.1.1")
+        self.assertEqual(self.run_helper("gate", success=True).stdout, "2.1.1\n")
+        self.assertEqual(self.run_helper("acceptance", success=True).stdout, "AUTOMATED\n")
+        self.release("2.2.0")
+        self.assertEqual(self.run_helper("kind", success=True).stdout, "minor\n")
+        self.run_helper("gate", success=False)
+        self.automated("2.2.0")
+        self.run_helper("gate", success=True)
+        self.release("2.2.1-rc.1")
+        self.automated("2.2.1-rc.1")
+        self.assertEqual(self.run_helper("kind", success=True).stdout, "patch\n")
+        self.run_helper("gate", success=True)
+
+    def test_major_release_still_requires_owner_real_aws_acceptance(self):
+        for tag in ("v2.1.0", "v3.0.0-rc.1"):
+            subprocess.run(["git", "-C", str(self.root), "tag", tag], check=True)
+        # X.0.0 and its candidates are major; a prerelease tag does not publish the 3.x line.
+        for version in ("3.0.0", "3.0.0-rc.2", "3.0.1", "3.1.0"):
+            with self.subTest(version=version):
+                self.release(version)
+                self.assertEqual(self.run_helper("kind", success=True).stdout, "major\n")
+                self.automated(version)
+                result = self.run_helper("gate", success=False)
+                self.assertIn("major releases require owner-run real AWS acceptance", result.stderr)
+                self.run_helper("acceptance", success=False)
+        self.release("3.0.0")
+        target, record = self.acceptance("3.0.0")
+        self.assertEqual(self.run_helper("acceptance", success=True).stdout, "REAL_AWS\n")
+        for case in R_CASES:
+            with self.subTest(case=case):
+                target.write_text(json.dumps({**record, "real_aws_acceptance": {**record["real_aws_acceptance"], case: "NOT_RUN"}}))
+                self.run_helper("gate", success=False)
+        target.write_text(json.dumps({**record, "source_fingerprint": ""}))
+        self.run_helper("gate", success=False)
+
+    def test_unpublished_major_line_is_treated_as_major(self):
+        self.release("2.1.1")
+        self.assertEqual(self.run_helper("kind", success=True).stdout, "major\n")
+        self.automated("2.1.1")
+        self.run_helper("gate", success=False)
+        subprocess.run(["git", "-C", str(self.root), "tag", "v2.1.0"], check=True)
+        self.run_helper("gate", success=True)
+
+    def test_automated_acceptance_cannot_carry_real_aws_claims(self):
+        self.release("2.1.1", "v2.1.0")
+        target, valid = self.automated("2.1.1")
+        self.run_helper("gate", success=True)
+        variants = [{**valid, "source_fingerprint": self.run_helper("fingerprint", success=True).stdout.strip()}]
+        for case in R_CASES:
+            for status in ["PASS", None]:
+                variants.append({**valid, "real_aws_acceptance": {**valid["real_aws_acceptance"], case: status}})
+        for record in variants:
+            with self.subTest(record=record):
+                target.write_text(json.dumps(record))
+                self.run_helper("gate", success=False)
+        target.write_text(json.dumps(valid))
+        (self.root / "main.go").write_text("package main\nfunc main() { println(7) }\n")
+        self.run_helper("gate", success=False)
 
     def test_gate_requires_committed_source_baseline(self):
         target, record = self.acceptance()

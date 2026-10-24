@@ -63,10 +63,14 @@ jobs:
           set -euo pipefail
           python3 scripts/release.py version --expect "$RELEASE_VERSION"
           python3 scripts/release.py gate
+          RELEASE_ACCEPTANCE=$(python3 scripts/release.py acceptance)
+          export RELEASE_ACCEPTANCE
           python3 - <<'PY'
           import hashlib, json, os, pathlib, tarfile
           root=pathlib.Path(os.environ['RELEASE_ASSETS'])
           version=os.environ['RELEASE_VERSION']
+          acceptance=os.environ['RELEASE_ACCEPTANCE']
+          real_aws='PASS' if acceptance=='REAL_AWS' else 'NOT_RUN'
           targets=('darwin/amd64','darwin/arm64','linux/amd64','linux/arm64')
           expected={f'aws-sso-profile-sync_{version}_{target.replace("/","_")}.tar.gz':target for target in targets}
           actual={p.name:p for p in root.glob('*.tar.gz')}
@@ -83,6 +87,7 @@ jobs:
                   if len(metadata)!=1 or metadata[0].size>65536: raise SystemExit('Invalid archive build metadata')
                   value=json.load(archive.extractfile(metadata[0]))
                   if value.get('version')!=version or value.get('target')!=target or value.get('execution')!='NATIVE_OFFLINE_SMOKE_PASS': raise SystemExit('Unverified native archive metadata')
+                  if value.get('release_acceptance')!=acceptance or value.get('real_aws_acceptance')!=real_aws: raise SystemExit('Archive acceptance metadata differs from the release gate')
               lines.append(f'{checksum}  {name}\n')
           (root/'SHA256SUMS').write_text(''.join(lines))
           PY

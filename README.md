@@ -6,7 +6,7 @@ AWS SSO Profile Sync is a Go CLI that turns your AWS IAM Identity Center account
 
 Managing SSO profiles across many AWS accounts meant repetitive configuration work and profiles that drifted as access changed. I couldn't find a tool that fit my workflow, so I built the original flags-only version. I used it daily across more than 50 AWS accounts at multiple companies.
 
-Version **2.0.0** replaced that original implementation with explicit authentication, deterministic planning and guarded configuration updates. **2.0.1** fixes Go module installation and clarifies installation and maintenance documentation. **2.1.0** adds `--adopt-existing`, which manages profiles written by the original tool under their existing names instead of creating suffixed duplicates. The original tool's field use is separate from this rewrite's validation. Releases have native validation on all four supported targets, synthetic Floci integration, and [source-bound real IAM Identity Center and AWS CLI acceptance](https://github.com/LanceSandino/aws-sso-profile-sync/blob/v2.0.1/.github/release-acceptance.json). Real acceptance covers two named sessions and two profile regions at one Identity Center region; it does not certify every AWS environment.
+Version **2.0.0** replaced that original implementation with explicit authentication, deterministic planning and guarded configuration updates. **2.0.1** fixes Go module installation and clarifies installation and maintenance documentation. **2.1.0** adds `--adopt-existing`, which manages profiles written by the original tool under their existing names instead of creating suffixed duplicates. **2.1.1** is a security release that rebuilds with Go 1.27.3 and current dependencies. The original tool's field use is separate from this rewrite's validation. Releases have native validation on all four supported targets and synthetic Floci integration. Major releases also require source-bound real IAM Identity Center and AWS CLI acceptance, which last passed for [2.1.0](https://github.com/LanceSandino/aws-sso-profile-sync/blob/v2.1.0/.github/release-acceptance.json); patch and minor releases such as 2.1.1 are accepted by the automated validation. Real acceptance covers two named sessions and two profile regions at one Identity Center region; it does not certify every AWS environment.
 
 ## What it does
 
@@ -36,18 +36,18 @@ The public [Homebrew tap](https://github.com/LanceSandino/homebrew-tap) installs
 
 ### Go install
 
-With Go 1.25 or newer:
+With Go 1.26 or newer:
 
 ```bash
 go install github.com/LanceSandino/aws-sso-profile-sync/v2@latest
 "$(go env GOPATH)/bin/aws-sso-profile-sync" --version
 ```
 
-If you set `GOBIN`, use that directory instead. Add the install directory to PATH or use the executable's full path. To pin this release, replace `@latest` with `@v2.1.0`. The `/v2` suffix is Go's standard module path for major version 2; the binary is still named `aws-sso-profile-sync`. [Tagged-checkout installation](docs/install.md#build-the-tagged-source) also supports `go install .`.
+If you set `GOBIN`, use that directory instead. Add the install directory to PATH or use the executable's full path. To pin this release, replace `@latest` with `@v2.1.1`. The `/v2` suffix is Go's standard module path for major version 2; the binary is still named `aws-sso-profile-sync`. [Tagged-checkout installation](docs/install.md#build-the-tagged-source) also supports `go install .`.
 
 ### Release archive (browser or curl)
 
-Download your platform's archive and `SHA256SUMS` from the [2.1.0 release](https://github.com/LanceSandino/aws-sso-profile-sync/releases/tag/v2.1.0). Verify its checksum, then use the included installer with an explicit prefix. The [curl walkthrough](docs/install.md#download-with-curl) selects the native target, downloads and verifies the archive, and installs it without Go or Homebrew. It requires Bash, Python 3, curl, tar and a SHA-256 checker.
+Download your platform's archive and `SHA256SUMS` from the [2.1.1 release](https://github.com/LanceSandino/aws-sso-profile-sync/releases/tag/v2.1.1). Verify its checksum, then use the included installer with an explicit prefix. The [curl walkthrough](docs/install.md#download-with-curl) selects the native target, downloads and verifies the archive, and installs it without Go or Homebrew. It requires Bash, Python 3, curl, tar and a SHA-256 checker.
 
 Supported targets are **Linux amd64/arm64 and macOS amd64/arm64**. Windows is unsupported. Each target has native build, test, archive installation and offline diagnostic validation.
 
@@ -138,7 +138,7 @@ Read [architecture and public design decisions](docs/architecture.md) for the da
 
 [Development instructions](docs/development.md) describe isolated build, vet, race, coverage and fuzz checks, plus real Floci/Testcontainers integration with synthetic accounts, roles, permission sets and device authorization. Development tests use disposable HOME/config/state paths and never access real AWS endpoints, actual credentials or personal AWS configuration. Go statement coverage is enforced at **85% or higher**.
 
-Native CI targets all four supported platforms and runs a separate Floci integration job. See the [release acceptance record](https://github.com/LanceSandino/aws-sso-profile-sync/blob/v2.1.0/.github/release-acceptance.json) for source-bound real AWS results and the observed scope. Development and CI use synthetic data only.
+Native CI targets all four supported platforms and runs a separate Floci integration job. See the [2.1.1 release acceptance record](https://github.com/LanceSandino/aws-sso-profile-sync/blob/v2.1.1/.github/release-acceptance.json) for its automated acceptance basis, and the [2.1.0 record](https://github.com/LanceSandino/aws-sso-profile-sync/blob/v2.1.0/.github/release-acceptance.json) for the most recent source-bound real AWS results and observed scope. Development and CI use synthetic data only.
 
 See the [changelog](CHANGELOG.md) for user-visible changes and [release instructions](docs/releasing.md) for versioning, acceptance and owner-controlled publication.
 

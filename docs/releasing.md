@@ -1,8 +1,8 @@
 # Preparing an approved release
 
-Stable [2.0.1](https://github.com/LanceSandino/aws-sso-profile-sync/releases/tag/v2.0.1) is published, and its public Homebrew formula is available. Native macOS/Linux Intel/ARM checks, Floci integration, real IAM Identity Center/AWS CLI acceptance, and actual public Homebrew installation passed for that release. Its [acceptance record](https://github.com/LanceSandino/aws-sso-profile-sync/blob/v2.0.1/.github/release-acceptance.json) remains bound to the immutable tag.
+Published releases and their public Homebrew formula are listed on the [releases page](https://github.com/LanceSandino/aws-sso-profile-sync/releases). Native macOS/Linux Intel/ARM checks and Floci integration passed for every release. Real IAM Identity Center/AWS CLI acceptance passed for 2.0.0 through 2.1.0; the most recent [real acceptance record](https://github.com/LanceSandino/aws-sso-profile-sync/blob/v2.1.0/.github/release-acceptance.json) remains bound to the immutable `v2.1.0` tag. 2.1.1 is a patch release accepted by automated validation.
 
-The following procedure applies to **future releases**. Local emulator validation remains separate from source-bound real AWS acceptance. The release workflow starts only by manual dispatch on the default `main` branch and never automatically publishes a release. Documentation maintenance on `main` does not replace already-published assets or refresh an older acceptance fingerprint.
+The following procedure applies to **future releases**. Patch and minor releases are accepted by the automated release validation; major releases also require source-bound real AWS acceptance run by the owner. The release workflow starts only by manual dispatch on the default `main` branch and never automatically publishes a release. Documentation maintenance on `main` does not replace already-published assets or refresh an older acceptance fingerprint.
 
 ## Version and validation
 
@@ -14,24 +14,49 @@ python3 scripts/release.py check
 python3 scripts/release.py version
 ```
 
-Commit the reviewed source before recording acceptance. Normal validation requires four native runner jobs (`linux-amd64`, `linux-arm64`, `darwin-amd64`, `darwin-arm64`), minimum Go 1.25 compilation, and the separate pinned Floci integration suite. Every native job builds, runs the test and coverage gates, packages its target, checks archive privacy, and installs and executes its own archive. Cross-compilation alone does not certify a target. Hosted workflow execution is still required before a release; declarations and local smoke results do not replace it.
+Commit the reviewed source before recording acceptance. Normal validation requires four native runner jobs (`linux-amd64`, `linux-arm64`, `darwin-amd64`, `darwin-arm64`), minimum Go 1.26 compilation, a pinned govulncheck scan, and the separate pinned Floci integration suite. Every native job builds, runs the test and coverage gates, packages its target, checks archive privacy, and installs and executes its own archive. Cross-compilation alone does not certify a target. Hosted workflow execution is still required before a release; declarations and local smoke results do not replace it.
 
-Version 2 identifies the replacement of the previously unversioned tool. Explicit login and collision-resistant profile naming change its public contracts; this does not imply a historical `1.0.0` tag. Use PATCH for compatible fixes, MINOR for compatible additions and MAJOR for breaking changes. Use `-rc.N` for candidates and remove the prerelease suffix only after final acceptance. Validation requires the first versioned changelog entry to match `VERSION` exactly once. Record user-visible changes under Added, Fixed and Improved, with explicit breaking-change notes.
+Version 2 identifies the replacement of the previously unversioned tool. Explicit login and collision-resistant profile naming change its public contracts; this does not imply a historical `1.0.0` tag. Use PATCH for compatible fixes, MINOR for compatible additions and MAJOR for breaking changes. `python3 scripts/release.py kind` prints how the gate classifies `VERSION`. Use `-rc.N` for candidates and remove the prerelease suffix only after final acceptance. Validation requires the first versioned changelog entry to match `VERSION` exactly once. Record user-visible changes under Added, Fixed and Improved, with explicit breaking-change notes.
 
 The runner labels are listed in the [official GitHub runner reference](https://docs.github.com/en/actions/reference/runners/github-hosted-runners). Workflow actions use verified immutable official action revisions.
 
-## Real AWS acceptance and source binding
+## Release acceptance
 
-The owner must complete the [manual AWS acceptance procedure](manual-aws-acceptance.md) on an authorized machine. Do not replace real acceptance with emulator results. Keep tokens, credentials and personal configuration out of release records.
+`.github/release-acceptance.json` records the acceptance basis for the exact `VERSION`. The gate chooses the required basis from the release type:
 
-For a new release, mark `.github/release-acceptance.json` `PENDING` and all cases `R01` through `R09` `NOT_RUN` until the new source is tested. The published 2.0.1 record already contains `PASS`; it is not a fresh template. Only after observing all nine cases pass for the intended version and source, record their `PASS` values, set the top-level status to `PASS`, and record the exact source fingerprint:
+| Release type | Required basis | Evidence |
+| --- | --- | --- |
+| Patch or minor, for example `2.1.1` or `2.2.0` | `AUTOMATED` | The release workflow's own validation run: native build, race, coverage and distribution tests plus archive installation smoke on all four targets, Floci emulator acceptance F01–F10 with synthetic data, minimum Go compilation and govulncheck |
+| Major, for example `3.0.0` or `3.0.0-rc.1` | `REAL_AWS` | The automated validation above **and** owner-run [real AWS acceptance](manual-aws-acceptance.md) R01–R09 on the exact source |
+
+A version is major when its minor and patch numbers are both zero, or when no published stable tag exists for its major line (for example `3.0.1` before `v3.0.0`). Classification fails closed, so an uncertain version is treated as major.
+
+For a patch or minor release, update the record's `version`, set `acceptance` to `AUTOMATED`, keep all cases `R01` through `R09` `NOT_RUN` and leave `source_fingerprint` empty:
+
+```json
+{
+  "schema_version": 2,
+  "version": "2.1.1",
+  "acceptance": "AUTOMATED",
+  "source_fingerprint": "",
+  "real_aws_acceptance": {"R01": "NOT_RUN", "...": "NOT_RUN", "R09": "NOT_RUN"},
+  "notes": "Patch release accepted by the automated release validation."
+}
+```
+
+An `AUTOMATED` record that contains any real AWS result or a fingerprint fails the gate; record `REAL_AWS` to claim real results. The draft job runs only after every automated validation job passes on the dispatched commit, so emulator, race and installation evidence always comes from the exact release source.
+
+For a major release, mark the record `PENDING` until the owner completes the [manual AWS acceptance procedure](manual-aws-acceptance.md) on an authorized machine. Do not replace real acceptance with emulator results, and keep tokens, credentials and personal configuration out of release records. Only after observing all nine cases pass for the intended version and source, record their `PASS` values, set `acceptance` to `REAL_AWS` and record the exact source fingerprint. The owner may also choose `REAL_AWS` for a patch or minor release; the same binding rules then apply.
 
 ```bash
 python3 scripts/release.py fingerprint
 python3 scripts/release.py gate
+python3 scripts/release.py acceptance
 ```
 
-Copy the fingerprint output into `source_fingerprint` and the exact `VERSION` into `version`. The fingerprint covers tracked source contents and modes, excluding only the acceptance JSON itself so the record can bind to its source. Missing cases, pending values, malformed records, a version mismatch or any subsequent source change makes the gate fail. Acceptance is an owner attestation backed by actual operator evidence; the script validates its binding and completeness, not the truth of external test results.
+The fingerprint covers tracked source contents and modes, excluding only the acceptance JSON itself so the record can bind to its source. Missing cases, pending values, malformed records, a version mismatch, uncommitted source or, for `REAL_AWS`, any subsequent source change makes the gate fail. `acceptance` prints the accepted basis. Real acceptance is an owner attestation backed by actual operator evidence; the script validates its binding and completeness, not the truth of external test results.
+
+Each archive's `BUILD-METADATA.json` records `release_acceptance` (`AUTOMATED`, `REAL_AWS`, or `NOT_RUN` for a candidate the gate does not accept) and `real_aws_acceptance` (`PASS` only for `REAL_AWS`, otherwise `NOT_RUN`). The draft job rejects archives whose metadata differs from the gate.
 
 ## Owner approval and draft creation
 
@@ -39,10 +64,10 @@ Configure a GitHub environment named `release` before dispatch. Require the repo
 
 Merge reviewed source through the repository's normal owner-controlled process. On the resulting default `main`, manually dispatch **Prepare approved draft release**. No dispatch input overrides the version. The workflow:
 
-1. Refuses another branch or pending/stale real AWS acceptance.
-2. Re-runs all native, minimum-toolchain and Floci validation.
+1. Refuses another branch, a pending or mismatched acceptance record, automated acceptance for a major release, or stale real AWS acceptance.
+2. Re-runs all native, minimum-toolchain, vulnerability-scan and Floci validation.
 3. Waits for the protected `release` environment's owner approval before its write job.
-4. Rechecks acceptance, four native archive checksums and archive privacy, then preserves a validated `homebrew-handoff` formula artifact for later review. It verifies that `main` still points to the reviewed source commit before creating the tag.
+4. Rechecks acceptance, four native archive checksums, archive acceptance metadata and archive privacy, then preserves a validated `homebrew-handoff` formula artifact for later review. It verifies that `main` still points to the reviewed source commit before creating the tag.
 5. Creates an annotated `v<VERSION>` tag, then a **draft** GitHub release with four archives and combined `SHA256SUMS`. Prerelease SemVer values also set the draft's prerelease flag.
 
 The workflow does not move or replace an existing tag, overwrite a release, merge a branch or publish the draft. If it fails after creating the tag, inspect the repository state before retrying; do not force-update the tag to hide a partial operation.
