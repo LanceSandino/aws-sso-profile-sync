@@ -3,16 +3,16 @@ module github.com/LanceSandino/aws-sso-profile-sync/v2
 go 1.26.0
 
 require (
-	github.com/aws/aws-sdk-go-v2 v1.47.4
-	github.com/aws/aws-sdk-go-v2/credentials v1.20.10
-	github.com/aws/aws-sdk-go-v2/service/identitystore v1.49.3
-	github.com/aws/aws-sdk-go-v2/service/sso v1.38.5
-	github.com/aws/aws-sdk-go-v2/service/ssoadmin v1.51.0
-	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.43.5
+	github.com/aws/aws-sdk-go-v2 v1.48.0
+	github.com/aws/aws-sdk-go-v2/credentials v1.21.0
+	github.com/aws/aws-sdk-go-v2/service/identitystore v1.49.9
+	github.com/aws/aws-sdk-go-v2/service/sso v1.39.5
+	github.com/aws/aws-sdk-go-v2/service/ssoadmin v1.52.6
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.44.5
 	github.com/moby/moby/api v1.56.1
 	github.com/moby/moby/client v0.6.2
-	github.com/testcontainers/testcontainers-go v0.44.0
-	golang.org/x/sys v0.49.0
+	github.com/testcontainers/testcontainers-go v0.45.0
+	golang.org/x/sys v0.50.0
 	gopkg.in/ini.v1 v1.67.3
 )
 
@@ -20,9 +20,9 @@ require (
 	dario.cat/mergo v1.0.2 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20261013165250-51075c6ea6bc // indirect
 	github.com/Microsoft/go-winio v0.6.4 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.5.7 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.8.7 // indirect
-	github.com/aws/smithy-go v1.28.6 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.5.12 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.8.12 // indirect
+	github.com/aws/smithy-go v1.28.9 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/containerd/errdefs v1.0.0 // indirect
