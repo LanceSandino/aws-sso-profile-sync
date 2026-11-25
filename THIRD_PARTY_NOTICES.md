@@ -416,7 +416,7 @@ identical copies are grouped.
 
 ## Go runtime and standard-library vendored packages
 
-The candidate is built with Go 1.27.3. The Go runtime and standard library are
+The candidate is built with Go 1.27.4. The Go runtime and standard library are
 licensed under the Go BSD license. Their compiled vendored `golang.org/x` code
 retains the associated BSD copyright notices below. The Go toolchain source is
 available from https://go.dev/dl/. These notices also cover earlier supported Go

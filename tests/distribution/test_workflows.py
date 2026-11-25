@@ -65,11 +65,25 @@ def release_policy(release, validation):
             raise ValueError("Official actions must be pinned to immutable commits")
 
 
+def build_toolchain_policy(validation, scheduled):
+    """Return the exact Go release that validation, release builds and the weekly scan share."""
+    pins = [re.findall(r"go-version: '([^']+)'", job(validation, name)) for name in ("unit", "vulncheck", "floci")]
+    pins.append(re.findall(r"go-version: '([^']+)'", job(scheduled, "govulncheck")))
+    versions = {version for pin in pins for version in pin}
+    if any(len(pin) != 1 for pin in pins) or len(versions) != 1:
+        raise ValueError("Validation, release builds and the scheduled scan must share one Go release")
+    version = versions.pop()
+    if not re.fullmatch(r"1\.\d+\.\d+", version):
+        raise ValueError("The build toolchain must be an exact patched Go release")
+    return version
+
+
 class WorkflowBoundaries(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.release = (ROOT / ".github/workflows/release.yml").read_text()
         cls.validation = (ROOT / ".github/workflows/validate.yml").read_text()
+        cls.scheduled = (ROOT / ".github/workflows/vulncheck.yml").read_text()
 
     def test_release_requires_all_authorization_boundaries(self):
         release_policy(self.release, self.validation)
@@ -122,6 +136,16 @@ class WorkflowBoundaries(unittest.TestCase):
                         self.validation.replace(" -tags integration -test", "")):
             with self.subTest(), self.assertRaises(ValueError):
                 release_policy(self.release, changed)
+
+    def test_build_toolchain_is_one_exact_go_release(self):
+        version = build_toolchain_policy(self.validation, self.scheduled)
+        start = self.validation.index("  floci:\n")
+        stale_floci = self.validation[:start] + self.validation[start:].replace(version, "1.0.0", 1)
+        for validation, scheduled in ((self.validation, self.scheduled.replace(version, "1.0.0")),
+                                      (stale_floci, self.scheduled),
+                                      (self.validation.replace(version, "1.27.x"), self.scheduled.replace(version, "1.27.x"))):
+            with self.subTest(), self.assertRaises(ValueError):
+                build_toolchain_policy(validation, scheduled)
 
     def test_mutable_action_tag_is_rejected(self):
         changed = re.sub(r"actions/download-artifact@[0-9a-f]{40}", "actions/download-artifact@v8", self.release)
