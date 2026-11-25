@@ -1,6 +1,6 @@
 # Development and local acceptance
 
-The module is `github.com/LanceSandino/aws-sso-profile-sync/v2`, using Go-native `cmd/` and `internal/` packages with adjacent tests. The module minimum is Go 1.26, the oldest supported Go release series; validation and release builds use Go 1.27.3. Unit tests run without Docker. Integration needs Docker and Testcontainers-Go 0.44.0.
+The module is `github.com/LanceSandino/aws-sso-profile-sync/v2`, using Go-native `cmd/` and `internal/` packages with adjacent tests. The module minimum is Go 1.26, the oldest supported Go release series; validation and release builds use Go 1.27.4. Unit tests run without Docker. Integration needs Docker and Testcontainers-Go 0.44.0.
 
 Never develop with real AWS endpoints, actual AWS credentials, or personal AWS configuration. `scripts/check.sh` scrubs inherited `AWS_*` variables, creates a disposable HOME with explicit config/credentials paths and synthetic credentials, and uses temporary Go caches. Test-only SDK construction rejects nonloopback endpoints, inherited production credentials and paths outside the disposable root. Clients do not load default AWS configuration or IMDS.
 
