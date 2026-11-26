@@ -3,6 +3,19 @@
 This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Release notes describe user-visible changes, newest first.
 
+## [2.1.2] — 2026-11-25
+
+Security release. Upgrade from any earlier version; the CLI's commands, profile names and configuration behavior are unchanged.
+
+### Fixed
+
+- Release binaries are built with Go 1.27.4. 2.1.1 was built with Go 1.27.3, and govulncheck reports GO-2026-6859 (CVE-2026-97054) in that toolchain's `net/http` as reachable from the CLI: when a `MaxBytesReader` limit is exceeded, an unsynchronized header update can crash an HTTP/1 server with a runtime panic.
+
+### Improved
+
+- Go modules are updated, including the AWS SDK for Go v2 1.48.0 (`credentials` 1.21.3, `sso` 1.39.5, `ssooidc` 1.44.5), Smithy Go 1.28.9 and `golang.org/x/sys` 0.50.0. Their license texts are unchanged. Integration tests use Testcontainers-Go 0.45.0.
+- Validation now requires every build and vulnerability-scan job, including the weekly scheduled scan, to use the same exact Go release.
+
 ## [2.1.1] — 2026-10-24
 
 Security release. Upgrade from any earlier version; the CLI's commands, profile names and configuration behavior are unchanged.
