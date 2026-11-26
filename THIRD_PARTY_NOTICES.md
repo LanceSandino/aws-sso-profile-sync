@@ -10,14 +10,14 @@ not replace upstream license terms.
 
 | Module | Version | License |
 | --- | --- | --- |
-| `github.com/aws/aws-sdk-go-v2` | `v1.47.4` | Apache-2.0 |
-| `github.com/aws/aws-sdk-go-v2/credentials` | `v1.20.10` | Apache-2.0 |
-| `github.com/aws/aws-sdk-go-v2/internal/configsources` | `v1.5.7` | Apache-2.0 |
-| `github.com/aws/aws-sdk-go-v2/internal/endpoints/v2` | `v2.8.7` | Apache-2.0 |
-| `github.com/aws/aws-sdk-go-v2/service/sso` | `v1.38.5` | Apache-2.0 |
-| `github.com/aws/aws-sdk-go-v2/service/ssooidc` | `v1.43.5` | Apache-2.0 |
-| `github.com/aws/smithy-go` | `v1.28.6` | Apache-2.0 |
-| `golang.org/x/sys` | `v0.49.0` | BSD-3-Clause |
+| `github.com/aws/aws-sdk-go-v2` | `v1.48.0` | Apache-2.0 |
+| `github.com/aws/aws-sdk-go-v2/credentials` | `v1.21.3` | Apache-2.0 |
+| `github.com/aws/aws-sdk-go-v2/internal/configsources` | `v1.5.12` | Apache-2.0 |
+| `github.com/aws/aws-sdk-go-v2/internal/endpoints/v2` | `v2.8.12` | Apache-2.0 |
+| `github.com/aws/aws-sdk-go-v2/service/sso` | `v1.39.5` | Apache-2.0 |
+| `github.com/aws/aws-sdk-go-v2/service/ssooidc` | `v1.44.5` | Apache-2.0 |
+| `github.com/aws/smithy-go` | `v1.28.9` | Apache-2.0 |
+| `golang.org/x/sys` | `v0.50.0` | BSD-3-Clause |
 
 AWS SDK modules are available from https://github.com/aws/aws-sdk-go-v2;
 Smithy Go is available from https://github.com/aws/smithy-go. Upstream
@@ -25,7 +25,7 @@ attribution NOTICE files are retained verbatim in the project `NOTICE`.
 The following distinct license texts are copied verbatim from the pinned modules;
 identical copies are grouped.
 
-### `github.com/aws/aws-sdk-go-v2 v1.47.4`, `github.com/aws/aws-sdk-go-v2/credentials v1.20.10`, `github.com/aws/aws-sdk-go-v2/internal/configsources v1.5.7`, `github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.8.7`, `github.com/aws/aws-sdk-go-v2/service/sso v1.38.5`, `github.com/aws/aws-sdk-go-v2/service/ssooidc v1.43.5`
+### `github.com/aws/aws-sdk-go-v2 v1.48.0`, `github.com/aws/aws-sdk-go-v2/credentials v1.21.3`, `github.com/aws/aws-sdk-go-v2/internal/configsources v1.5.12`, `github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.8.12`, `github.com/aws/aws-sdk-go-v2/service/sso v1.39.5`, `github.com/aws/aws-sdk-go-v2/service/ssooidc v1.44.5`
 
 ```text
 
@@ -233,7 +233,7 @@ identical copies are grouped.
 
 ```
 
-### `github.com/aws/smithy-go v1.28.6`
+### `github.com/aws/smithy-go v1.28.9`
 
 ```text
 
@@ -521,7 +521,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ```
 
-### golang.org/x/sys v0.49.0 (production dependency)
+### golang.org/x/sys v0.50.0 (production dependency)
 
 ```text
 Copyright 2009 The Go Authors.
