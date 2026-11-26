@@ -1,6 +1,6 @@
 # Preparing an approved release
 
-Published releases and their public Homebrew formula are listed on the [releases page](https://github.com/LanceSandino/aws-sso-profile-sync/releases). Native macOS/Linux Intel/ARM checks and Floci integration passed for every release. Real IAM Identity Center/AWS CLI acceptance passed for 2.0.0 through 2.1.0; the most recent [real acceptance record](https://github.com/LanceSandino/aws-sso-profile-sync/blob/v2.1.0/.github/release-acceptance.json) remains bound to the immutable `v2.1.0` tag. 2.1.1 is a patch release accepted by automated validation.
+Published releases and their public Homebrew formula are listed on the [releases page](https://github.com/LanceSandino/aws-sso-profile-sync/releases). Native macOS/Linux Intel/ARM checks and Floci integration passed for every release. Real IAM Identity Center/AWS CLI acceptance passed for 2.0.0 through 2.1.0; the most recent [real acceptance record](https://github.com/LanceSandino/aws-sso-profile-sync/blob/v2.1.0/.github/release-acceptance.json) remains bound to the immutable `v2.1.0` tag. 2.1.1 and 2.1.2 are patch releases accepted by automated validation.
 
 The following procedure applies to **future releases**. Patch and minor releases are accepted by the automated release validation; major releases also require source-bound real AWS acceptance run by the owner. The release workflow starts only by manual dispatch on the default `main` branch and never automatically publishes a release. Documentation maintenance on `main` does not replace already-published assets or refresh an older acceptance fingerprint.
 
@@ -26,7 +26,7 @@ The runner labels are listed in the [official GitHub runner reference](https://d
 
 | Release type | Required basis | Evidence |
 | --- | --- | --- |
-| Patch or minor, for example `2.1.1` or `2.2.0` | `AUTOMATED` | The release workflow's own validation run: native build, race, coverage and distribution tests plus archive installation smoke on all four targets, Floci emulator acceptance F01–F10 with synthetic data, minimum Go compilation and govulncheck |
+| Patch or minor, for example `2.1.2` or `2.2.0` | `AUTOMATED` | The release workflow's own validation run: native build, race, coverage and distribution tests plus archive installation smoke on all four targets, Floci emulator acceptance F01–F10 with synthetic data, minimum Go compilation and govulncheck |
 | Major, for example `3.0.0` or `3.0.0-rc.1` | `REAL_AWS` | The automated validation above **and** owner-run [real AWS acceptance](manual-aws-acceptance.md) R01–R09 on the exact source |
 
 A version is major when its minor and patch numbers are both zero, or when no published stable tag exists for its major line (for example `3.0.1` before `v3.0.0`). Classification fails closed, so an uncertain version is treated as major.
@@ -36,7 +36,7 @@ For a patch or minor release, update the record's `version`, set `acceptance` to
 ```json
 {
   "schema_version": 2,
-  "version": "2.1.1",
+  "version": "2.1.2",
   "acceptance": "AUTOMATED",
   "source_fingerprint": "",
   "real_aws_acceptance": {"R01": "NOT_RUN", "...": "NOT_RUN", "R09": "NOT_RUN"},

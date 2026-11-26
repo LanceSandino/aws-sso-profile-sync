@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "version": "2.1.1",
+  "version": "2.1.2",
   "acceptance": "AUTOMATED",
   "source_fingerprint": "",
   "real_aws_acceptance": {
@@ -14,5 +14,5 @@
     "R08": "NOT_RUN",
     "R09": "NOT_RUN"
   },
-  "notes": "Patch release accepted by the automated release validation: native build, race, coverage and distribution tests plus archive installation smoke on Linux and macOS Intel/ARM, the pinned Floci emulator acceptance F01-F10 with synthetic data, minimum Go compilation and govulncheck. Real AWS acceptance R01-R09 is required for major releases and was not run for 2.1.1; the most recent real AWS acceptance is the v2.1.0 record."
+  "notes": "Patch release accepted by the automated release validation: native build, race, coverage and distribution tests plus archive installation smoke on Linux and macOS Intel/ARM, the pinned Floci emulator acceptance F01-F10 with synthetic data, minimum Go compilation and govulncheck. Real AWS acceptance R01-R09 is required for major releases and was not run for 2.1.2; the most recent real AWS acceptance is the v2.1.0 record."
 }
